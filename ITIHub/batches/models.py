@@ -26,3 +26,5 @@ class Batch(models.Model):
     status = models.CharField(max_length=20, choices=[('Active', 'Active'), ('Ended', 'Ended')])
     supervisor = models.ForeignKey(Supervisor, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
+    # list of students in the batch (list of national ids extracted from a csv file)
+    students = models.TextField() #TextField is datatype for long text

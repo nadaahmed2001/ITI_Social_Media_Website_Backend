@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Program Details</title>
+</head>
+<body>
+    <h1>{{ Program.name }}</h1>
+    <p>{{ Program.description }}</p>
+    <h2>Tracks</h2>
+    <ul>
+        {% for track in Tracks %}
+        
+            <li>{{ track.name }} - {{ track.description }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

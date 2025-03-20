@@ -9,7 +9,7 @@ from django.db import models
 class User(AbstractUser): 
     phone = models.CharField(max_length=50, unique=True)
     profile_picture = models.CharField(max_length=50, blank=True, null=True)
-    department = models.ForeignKey('batches.Department', on_delete=models.SET_NULL, null=True)
+    # department = models.ForeignKey('batches.Department', on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Fix for conflicts with Django’s default User model
