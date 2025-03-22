@@ -37,12 +37,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'rest_framework',
     "users",
     "batches",
     "groups",
     "posts",
     "notifications",
-    "chat"
+    "chat",
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -74,6 +76,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "ITIHub.wsgi.application"
+ASGI_APPLICATION = 'ITIHub.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 

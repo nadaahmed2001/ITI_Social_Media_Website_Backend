@@ -24,7 +24,7 @@ class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     batch = models.ForeignKey('batches.Batch', on_delete=models.SET_NULL, null=True)
     national_id = models.CharField(max_length=20, unique=True)
-    status = models.CharField(max_length=20, choices=[('Active', 'Active'), ('Graduated', 'Graduated')])
+    status = models.CharField(max_length=20, choices=[('Active', 'Active'), ('Graduated', 'Graduated')] )
 
 class Supervisor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

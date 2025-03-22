@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ group.group_name }} - {{ group.batch.name }}</h2>
+    <div class="chat-container" id="chat-messages">
+        {% for message in group.messages.all|slice:":50" %}
+            <div class="message {% if message.is_admin_message %}admin-message{% endif %}">
+                <span class="sender">{{ message.sender.username }}</span>
+                <span class="timestamp">{{ message.timestamp|date:"H:i" }}</span>
+                <p>{{ message.content }}</p>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <div class="message-input">
+        <input type="text" id="message-input" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    const groupId = {{ group.id }};
+    const socket = new WebSocket(`ws://${window.location.host}/ws/chat/${groupId}/`);
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const messagesDiv = document.getElementById('chat-messages');
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${data.is_admin ? 'admin-message' : ''}`;
+        messageDiv.innerHTML = `
+            <span class="sender">${data.sender}</span>
+            <span class="timestamp">${data.timestamp}</span>
+            <p>${data.message}</p>
+        `;
+        
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    };
+
+    function sendMessage() {
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value;
+        if (message.trim()) {
+            socket.send(JSON.stringify({'message': message}));
+            messageInput.value = '';
+        }
+    }
+</script>
+{% endblock %}
