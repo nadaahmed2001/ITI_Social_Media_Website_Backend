@@ -1,9 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Track, Batch, Program, Department
+from .models import Track, Batch, Program, Department, VerifiedNationalID, UnverifiedNationalID, StudentBatch, Student
+from django.shortcuts import render, redirect
 import csv
-# from .forms import BatchForm
-from .models import UnverifiedNationalID, Batch
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 import csv
 from users.decorators import supervisor_required
@@ -58,7 +56,14 @@ def create_batch(request):
                 reader = csv.reader(decoded_file)
                 for row in reader:
                     national_id = row[0].strip()
-                    UnverifiedNationalID.objects.create(national_id=national_id, batch=batch)
+                    # if this national exists in the verified list, assign it to the new batch in studentBatch table and in the verified table
+                    if VerifiedNationalID.objects.filter(national_id=national_id).exists():
+                        VerifiedNationalID.objects.create(national_id=national_id, batch=batch)
+                        # get the student object and assign it to the batch
+                        student= Student.objects.get(user__national_id=national_id)
+                        StudentBatch.objects.create(student=student, batch=batch)
+                    else:
+                        UnverifiedNationalID.objects.create(national_id=national_id, batch=batch)
 
             messages.success(request, "Batch created successfully!")
             return redirect("supervisor_dashboard")  # Redirect to dashboard
