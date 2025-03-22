@@ -1,7 +1,11 @@
 from django import forms
+from .models import Batch
 
-class BatchForm(forms.Form):
-    name = forms.CharField(max_length=100)
-    start_date = forms.DateField(widget=forms.SelectDateWidget)
-    end_date = forms.DateField(widget=forms.SelectDateWidget, required=False)
-    csv_file = forms.FileField()
+class BatchForm(forms.ModelForm):
+    class Meta:
+        model = Batch
+        fields = ["name", "track", "start_date", "end_date","status"]
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "end_date": forms.DateInput(attrs={"type": "date"}),
+        }
