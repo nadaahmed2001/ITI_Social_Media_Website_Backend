@@ -2,6 +2,11 @@
 <html>
 <head>
     <title>Program Details</title>
+    <script>
+        function navigateToTrackBatches(trackId) {
+            window.location.href = `/supervisor_pages/track_batches/${trackId}`;
+        }
+    </script>
 </head>
 <body>
     <h1>{{ Program.name }}</h1>
@@ -9,8 +14,9 @@
     <h2>Tracks</h2>
     <ul>
         {% for track in Tracks %}
-        
-            <li>{{ track.name }} - {{ track.description }}</li>
+            <li>
+                <button onclick="navigateToTrackBatches({{ track.id }})">{{ track.name }}</button>
+            </li>
         {% endfor %}
     </ul>
 </body>

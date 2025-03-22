@@ -33,12 +33,14 @@
     </style>
     <script>
         function navigateToProgramDetails(programId) {
-            window.location.href = `/supervisor/program_details/${programId}`;
+            window.location.href = `/supervisor_pages/program_details/${programId}`;
         }
     </script>
 </head>
 <body>
     <div class="sidebar">
+        <h2>Hello {{ user.username }}</h2>
+        <a href="{% url 'supervisor_logout' %}">Logout</a>
         <h2>Programs</h2>
         {% for program in Programs %}
             <div class="program">

@@ -1,0 +1,12 @@
+
+<h2>Create New Batch</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    
+    <label for="csv_file">Upload CSV File (National IDs):</label>
+    <input type="file" name="csv_file" accept=".csv">
+
+    <button type="submit">Create Batch</button>
+</form>
+
