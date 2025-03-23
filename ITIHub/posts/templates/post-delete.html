@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h2>Delete Post</h2>
+    <div class="post">
+        <h4>{{ post.author }}</h4>
+        <p class="date">{{ post.created_on|date:"F d, Y H:i" }}</p>
+        <p class="body">{{ post.body }}</p>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <p>Are you sure you want to delete this post?</p>
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a href="{% url 'post-list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+<style>
+    .delete-btn {
+        background: red;
+        color: white;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .cancel-btn {
+        display: block;
+        text-align: center;
+        margin-top: 10px;
+        color: gray;
+    }
+</style>
+{% endblock %}
