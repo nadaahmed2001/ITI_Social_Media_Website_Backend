@@ -5,7 +5,7 @@ __pycache__/
 venv/
 env/
 *.egg-info/
-db.sqlite3
+# db.sqlite3
 instance/
 media/
 .env
