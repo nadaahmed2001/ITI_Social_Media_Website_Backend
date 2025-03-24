@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ Track.name }} - Batches</title>
+    <style>
+        .sidebar {
+            width: 200px;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border-right: 1px solid #ccc;
+        }
+        .batch {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+            background-color: #fff;
+        }
+        .active { background-color: lightgreen; }
+        .ended { background-color: lightcoral; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Batches</h2>
+        <button class="active">Active</button>
+        <button class="ended">Old</button>
+        <a href="{% url 'create_batch' %}"><button>Start New Batch +</button></a>
+    </div>
+    <div class="content">
+        <h1>{{ Track.name }} - Batches</h1>
+        <ul>
+            {% for batch in Batches %}
+                <li class="batch {% if batch.status == 'Active' %}active{% else %}ended{% endif %}">
+                    {{ batch.name }} - {{ batch.status }}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</body>
+</html>

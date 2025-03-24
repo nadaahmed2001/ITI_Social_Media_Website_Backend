@@ -1,20 +1,31 @@
-from django.shortcuts import render
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Track, Batch, Program, Department
+from .models import Track, Batch, Program, Department, VerifiedNationalID, UnverifiedNationalID, StudentBatch, Student
+from django.shortcuts import render, redirect
 import csv
+from django.core.exceptions import PermissionDenied
+import csv
+from users.decorators import supervisor_required
+from django.contrib import messages
 from .forms import BatchForm
+from django.http import HttpResponse
+
+
 
 
 # Create your views here.
 
+@supervisor_required
 def dashboard(request):
+    print("I'm now inside the supervisor dashboard")
     # tracks = Track.objects.all()
     Programs = Program.objects.all()
     # print("Tracks: ", tracks)
     print("Programs: ", Programs)
-    return render(request, 'supervisor_dashboard.html', {'Programs': Programs})
+    user=request.user
+    return render(request, 'supervisor_dashboard.html', {'Programs': Programs, 'User': user})
 
 def program_details(request, program_id):
+    print("I'm now inside the program details")
     program = get_object_or_404(Program, pk=program_id)
     tracks= Track.objects.filter(program=program)
     return render(request, 'program_details.html', {'Program': program, 'Tracks': tracks})
@@ -24,33 +35,41 @@ def track_batches(request, track_id):
     batches = Batch.objects.filter(track=track)
     return render(request, 'track_batches.html', {'Track': track, 'Batches': batches})
 
-# def start_new_batch(request):
-#     if request.method == 'POST':
-#         form = BatchForm(request.POST, request.FILES)
-#         if form.is_valid():
-#             name = form.cleaned_data['name']
-#             start_date = form.cleaned_data['start_date']
-#             end_date = form.cleaned_data['end_date']
-#             csv_file = form.cleaned_data['csv_file']
-#             student_national_ids = []
 
-#             # Read the CSV file and extract national IDs
-#             decoded_file = csv_file.read().decode('utf-8').splitlines()
-#             reader = csv.reader(decoded_file)
-#             for row in reader:
-#                 student_national_ids.append(row[0])
 
-#             # Create a new batch
-#             Batch.objects.create(
-#                 name=name,
-#                 start_date=start_date,
-#                 end_date=end_date,
-#                 status='Active',
-#                 supervisor=request.user.supervisor,
-#                 student_national_ids=','.join(student_national_ids)
-#             )
-#             return redirect('dashboard')
-#     else:
-#         form = BatchForm()
-#     return render(request, 'batches/start_new_batch.html', {'form': form})
 
+
+@supervisor_required
+def create_batch(request):
+    if request.method == "POST":
+        form = BatchForm(request.POST, request.FILES)
+        if form.is_valid():
+            batch = form.save(commit=False)
+            # batch.supervisor = request.user  # Assign logged-in supervisor
+            batch.status = "Active"
+            batch.save()
+
+            # Process CSV file if uploaded
+            csv_file = request.FILES.get("csv_file")
+            if csv_file:
+                decoded_file = csv_file.read().decode("utf-8").splitlines()
+                reader = csv.reader(decoded_file)
+                for row in reader:
+                    national_id = row[0].strip()
+                    # if this national exists in the verified list, assign it to the new batch in studentBatch table and in the verified table
+                    if VerifiedNationalID.objects.filter(national_id=national_id).exists():
+                        VerifiedNationalID.objects.create(national_id=national_id, batch=batch)
+                        # get the student object and assign it to the batch
+                        student= Student.objects.get(user__national_id=national_id)
+                        StudentBatch.objects.create(student=student, batch=batch)
+                    else:
+                        UnverifiedNationalID.objects.create(national_id=national_id, batch=batch)
+
+            messages.success(request, "Batch created successfully!")
+            return redirect("supervisor_dashboard")  # Redirect to dashboard
+
+    else:
+        form = BatchForm()
+
+    tracks = Track.objects.all()
+    return render(request, "create_batch.html", {"form": form, "tracks": tracks})

@@ -16,6 +16,16 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+AUTH_USER_MODEL = "users.User"
+LOGIN_URL = "login"  # Redirect users to login page if not authenticated
+LOGIN_REDIRECT_URL = "home"  # Redirect after login
+LOGOUT_REDIRECT_URL = "login"  # Redirect after logout
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -37,14 +47,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    'rest_framework',
-    "users",
     "batches",
+    "users",
     "groups",
     "posts",
     "notifications",
     "chat",
-    'channels',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
