@@ -5,7 +5,8 @@
         <h5>Add a Post</h5>
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            {{ post_form.as_p }}  <!-- Use post_form here -->
+            {{ post_form.as_p }}
+            {{ attachment_form.as_p }}  <!-- Include attachment fields -->
             <button type="submit" name="post_submit" class="submit-btn">Submit</button>
         </form>
     </div>
@@ -18,7 +19,34 @@
             <h3>Post ID: {{ post.id }}</h3> 
             <h4>{{ post.title }}</h4>
             <p class="post-body"> body :{{ post.body }}</p>
+            {% for attachment in post.attachments.all %}
+            {% if attachment.image %}
+                <img src="{{ attachment.image.url }}" alt="Post Image" width="300">
+            {% endif %}
+            {% if attachment.video %}
+                <video width="300" controls>
+                    <source src="{{ attachment.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            {% endif %}
+        {% endfor %}
             <h4><a href="{% url 'post-detail' post.pk %}" class="author">By {{ post.author }}</a></h4>
+            <form method="POST" action="{% url 'like' post.pk%}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit">
+                <span>{{ post.likes.all.count }}</span>
+                like
+                </button>
+            </form> 
+            <form method="POST" action="{% url 'dislike' post.pk%}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit">
+                    <span>{{ post.dislikes.all.count }}</span>
+                dislike
+                </button>
+            </form>
             <p class="date"><small>on {{ post.created_on }}</small></p>
             <p>{{post.attachment}}</p>
             <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
@@ -56,6 +84,7 @@
                         {% csrf_token %}
                         <input type="hidden" name="post_id" value="{{ post.id }}">
                         {{ comment_form.as_p }}  <!-- Use comment_form here -->
+                        {{ attachment_form.as_p }} 
                         <button type="submit" name="comment_submit" class="submit-btn">Comment</button>
                     </form>
                 </div>
@@ -65,6 +94,8 @@
         {% endfor %}
     </div>
 </div>
+
+
 <!-- Styles -->
 <style>
     body {

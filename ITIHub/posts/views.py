@@ -1,49 +1,59 @@
+# import json  # Add this import at the top
+# import logging
 from django.shortcuts import render, get_object_or_404 , redirect
 from django.urls import reverse_lazy
+from django.http import HttpResponseRedirect
 from django.views import View
 from django.views.generic.edit import UpdateView, DeleteView
-from .models import Post , Comment, Attachment 
+from .models import Post , Comment, Attachment  
 from django.http import JsonResponse
-from .forms import PostForm, CommentForm
+from .forms import PostForm, CommentForm ,AttachmentForm
 from django.contrib.auth.models import User
 from .forms import PostForm, CommentForm 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin , LoginRequiredMixin
 
 
-class PostListView(LoginRequiredMixin,View):
+
+
+class PostListView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         posts = Post.objects.all().order_by('-created_on')
         post_form = PostForm()
         comment_form = CommentForm()
+        attachment_form = AttachmentForm()
+
         context = {
             'post_list': posts,
             'post_form': post_form,
             'comment_form': comment_form,
+            'attachment_form': attachment_form,
         }
         return render(request, 'post_list.html', context)
 
     def post(self, request, *args, **kwargs):
-        if 'post_submit' in request.POST:  # Handle post submission
+        if 'post_submit' in request.POST:
             post_form = PostForm(request.POST)
+            
             if post_form.is_valid():
                 new_post = post_form.save(commit=False)
-                new_post.author = request.user if request.user.is_authenticated else None
+                new_post.author = request.user
                 new_post.save()
 
-        elif 'comment_submit' in request.POST:  # Handle comment submission
-            post_id = request.POST.get('post_id')
-            post = get_object_or_404(Post, id=post_id)
-            comment_form = CommentForm(request.POST)
-            if comment_form.is_valid():
-                new_comment = comment_form.save(commit=False)
-                new_comment.author = request.user if request.user.is_authenticated else None
-                new_comment.post = post
-                new_comment.save()
+                # Handle multiple image and video attachments
+                for file in request.FILES.getlist('image'):
+                    attachment = Attachment.objects.create(image=file)
+                    new_post.attachments.add(attachment)
 
-        return redirect('post-list')  # Redirect to the same page to display updates
+                for file in request.FILES.getlist('video'):
+                    attachment = Attachment.objects.create(video=file)
+                    new_post.attachments.add(attachment)
+
+                return redirect('post-list')
+
+        return redirect('post-list')
     
-class PostDetailView(LoginRequiredMixin,View):
+class PostDetailView(LoginRequiredMixin, View):
     def get(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
         form = CommentForm()
@@ -55,18 +65,26 @@ class PostDetailView(LoginRequiredMixin,View):
     def post(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
         form = CommentForm(request.POST)
-        if request.method == "POST":
-          if form.is_valid():
+
+        if form.is_valid():
             comment = form.save(commit=False)
             comment.post = post
-            if request.user.is_authenticated:
-                comment.author = request.user  
-            else:
-                comment.author = None  
+            comment.author = request.user
             comment.save()
-            return redirect('post-detail', pk=post.pk)  
+
+            # Handle multiple attachments
+            for file in request.FILES.getlist('image'):
+                attachment = Attachment.objects.create(image=file)
+                comment.attachments.add(attachment)
+
+            for file in request.FILES.getlist('video'):
+                attachment = Attachment.objects.create(video=file)
+                comment.attachments.add(attachment)
+
+            return redirect('post-detail', pk=post.pk)
 
         return render(request, 'post_detail.html', {'post': post, 'form': form})
+
 
 
 class PostEditView(LoginRequiredMixin,UserPassesTestMixin,UpdateView):
@@ -111,34 +129,57 @@ class CommentDeleteView(LoginRequiredMixin,UserPassesTestMixin,DeleteView):
     def test_func(self):
         post = self.get_object()
         return self.request.user == post.author
-  
 
-class AddLike(LoginRequiredMixin , View):
-    def post(self , request , pk , *args , **kwargs):
+class AddLike(LoginRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
         post = Post.objects.get(pk=pk)
-        
-        is_like = False
     
+        is_dislike = False
+        for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
+            if dislike == request.user:
+                is_dislike = True
+                break
+        if is_dislike:
+            post.dislikes.remove(request.user)  # ✅ Fix here too
+
+        is_like = False
         for like in post.likes.all():
             if like == request.user:
                 is_like = True
                 break
 
-        if not is_like :
+        if not is_like:
             post.likes.add(request.user)
 
         if is_like:
             post.likes.remove(request.user)
+        
+        next_url = request.POST.get('next', '/')
+        return HttpResponseRedirect(next_url)
 
-# class Dislike(LoginRequiredMixin , View):
-#     def post(self , request , pk , *args , **kwargs):
-#         post = Post.objects.get(pk=pk)
+class Dislike(LoginRequiredMixin, View):
+    def post(self, request, pk, *args, **kwargs):
+        post = Post.objects.get(pk=pk)
 
-#         is_dislike = False
+        is_like = False
+        for like in post.likes.all():
+            if like == request.user:
+                is_like = True
+                break
+        if is_like:
+            post.likes.remove(request.user)
 
-#         for dislike in post.dislike.all():
-#             if dislike == request.user:
-#                 is_dislike = True
-#                 break
+        is_dislike = False
+        for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
+            if dislike == request.user:
+                is_dislike = True
+                break
 
-#         if not
+        if not is_dislike:
+            post.dislikes.add(request.user)  # ✅ Fix here too
+
+        if is_dislike:
+            post.dislikes.remove(request.user)  # ✅ Fix here too
+
+        next_url = request.POST.get('next', '/')
+        return HttpResponseRedirect(next_url)

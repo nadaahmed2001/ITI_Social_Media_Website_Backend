@@ -11,6 +11,24 @@
         <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
         <a href="{% url 'post_delete' post.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
     </div>
+    {% for post in post_list %}
+    <div class="post">
+        <p>{{ post.body }}</p>
+
+        <!-- Display Post Attachments -->
+        {% for attachment in post.attachments.all %}
+            {% if attachment.image %}
+                <img src="{{ attachment.image.url }}" alt="Post Image" width="300">
+            {% endif %}
+            {% if attachment.video %}
+                <video width="300" controls>
+                    <source src="{{ attachment.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endfor %}
 
     <!-- Display Comments -->
     <div class="comments">
@@ -42,6 +60,7 @@
         <form method="POST">
             {% csrf_token %}
             {{ form.as_p }}
+            {{ attachment_form.as_p }} 
             <button type="submit" class="submit-btn">Comment</button> 
         </form>
     </div> 
