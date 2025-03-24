@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import GroupChat, GroupMessage, ChatMessage
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
 
 class GroupChatSerializer(serializers.ModelSerializer):
     members = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True)
