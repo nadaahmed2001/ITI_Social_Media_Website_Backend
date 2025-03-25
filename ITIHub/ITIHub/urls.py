@@ -1,14 +1,15 @@
-
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path
-from django.urls import include
+from django.conf.urls.static import static
+from django.urls import path, include
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path('admin/', admin.site.urls),
+    path('posts/', include('posts.urls')),  
     path("supervisor_pages/", include("batches.urls")),
-    path("users/", include("users.urls")),   # Authentication URLs
-    # path("", include("django.contrib.auth.urls")),  # Default login/logout/password reset
-    path("post/" , include('posts.urls')),
-
+    path("users/", include("users.urls")),  
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

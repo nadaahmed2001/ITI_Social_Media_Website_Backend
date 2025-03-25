@@ -1,16 +1,17 @@
 {% block content %}
 <div class="container">
     <h1 class="text-center">Test</h1>
+    <h1>Ana feeeeeeeeeeeeeeen</h1>
     <div class="post-form">
         <h5>Add a Post</h5>
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            {{ post_form.as_p }}
-            {{ attachment_form.as_p }}  <!-- Include attachment fields -->
+            {{ post_form.as_p }}  <!-- Use post_form here -->
+            {{ attachment_form.as_p }} 
             <button type="submit" name="post_submit" class="submit-btn">Submit</button>
         </form>
     </div>
-    
+
     <!-- Post List -->
     <div class="posts">
         <h3>Recent Posts</h3>
@@ -31,22 +32,22 @@
             {% endif %}
         {% endfor %}
             <h4><a href="{% url 'post-detail' post.pk %}" class="author">By {{ post.author }}</a></h4>
-            <form method="POST" action="{% url 'like' post.pk%}">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.path }}">
-                <button type="submit">
-                <span>{{ post.likes.all.count }}</span>
-                like
-                </button>
-            </form> 
-            <form method="POST" action="{% url 'dislike' post.pk%}">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.path }}">
-                <button type="submit">
-                    <span>{{ post.dislikes.all.count }}</span>
-                dislike
-                </button>
-            </form>
+           
+            <!-- Reaction Form -->
+                        <form method="POST" action="{% url 'add-reaction' post.pk 'Like' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                          <select name="reaction_type" 
+                            onchange="this.form.action=`{% url 'add-reaction' post.pk 'Like' %}`.replace('Like', this.value); this.form.submit();">
+                                    <option value="">React</option>
+                                    <option value="Like">👍 Like ({{ post.reaction_counts.Like }})</option>
+                                    <option value="Heart">❤️ Heart ({{ post.reaction_counts.Heart }})</option>
+                                    <option value="Celebrate">🎉 Celebrate ({{ post.reaction_counts.Celebrate }})</option>
+                                    <option value="Laugh">😂 Laugh ({{ post.reaction_counts.Laugh }})</option>
+                                    <option value="Insightful">💡 Insightful ({{ post.reaction_counts.Insightful }})</option>
+                                    <option value="Support">🤝 Support ({{ post.reaction_counts.Support }})</option>
+                        </select> 
+                      
             <p class="date"><small>on {{ post.created_on }}</small></p>
             <p>{{post.attachment}}</p>
             <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
@@ -94,8 +95,6 @@
         {% endfor %}
     </div>
 </div>
-
-
 <!-- Styles -->
 <style>
     body {
@@ -227,3 +226,4 @@
     }
 </style>
 {% endblock content %}
+
