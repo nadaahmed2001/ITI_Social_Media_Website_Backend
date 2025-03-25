@@ -6,7 +6,7 @@ from rest_framework import status, permissions
 from rest_framework.authtoken.models import Token
 from .models import User
 from .serializers import UserSerializer, RegisterStudentSerializer, LoginSerializer
-from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID
+from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,8 +30,12 @@ class RegisterStudentView(APIView):
                 user.is_student = True
                 user.is_active = True
                 user.save()
-                VerifiedNationalID.objects.create(national_id=national_id, batch=batch)
-                StudentBatch.objects.create(student=user, batch=batch)
+                print("I have created the user: ", user)
+
+                # Create a student 
+                student = Student.objects.create(user=user, status="Active")
+                print("I have created the student: ", student)
+                StudentBatch.objects.create(student=student, batch=batch)
                 unverified_entry.delete()
 
 

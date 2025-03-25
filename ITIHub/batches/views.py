@@ -151,6 +151,13 @@ class UploadNationalIDView(APIView):
                 if not UnverifiedNationalID.objects.filter(national_id=national_id).exists():
                     UnverifiedNationalID.objects.create(national_id=national_id, batch=batch)
                     created_count += 1
+                else :
+                    print(f"National ID {national_id} already exists")
+                    # Make a new instance of the StudentBatch model (if not already exists)
+                    student_batch, created = StudentBatch.objects.get_or_create(national_id=national_id, batch=batch)
+                    if created:
+                        print(f"StudentBatch instance created for {national_id}")
+                        
 
             return Response({"message": f"{created_count} National IDs added successfully!"}, status=status.HTTP_201_CREATED)
 
