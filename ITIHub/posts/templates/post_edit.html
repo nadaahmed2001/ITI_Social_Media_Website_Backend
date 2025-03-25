@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Test</h1>
+
+    <div class="post-form">
+        <h5>Update POST</h5>
+        <form method="POST">
+            {% csrf_token %} 
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="text-muted">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button class="submit-btn">Submit</button>
+        </form>
+    </div>
+
+    <div class="posts">
+        <h3>Recent Posts</h3>
+      
+    <div class="post">
+        <h4><a href="{% url 'post-detail' post.pk %}">{{ post.author }}</a></h4>
+        <p class="author">By </p>
+        <p class="date">{{ post.created_on|date:"F d, Y H:i" }}</p>
+        <p class="body">{{ post.body|truncatewords:30 }}</p>
+    </div>
+    
+    <p class="no-posts">No posts available.</p>
+
+<!-- Add Post Form -->
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Post</button>
+</form>
+        {% comment %} {% for post in post_list %}
+            <div class="post">
+                <p class="author">{{ post.author }}</p>
+                <p class="date">{{ post.created_on|date:"F d, Y H:i" }}</p>
+                <p class="body">{{ post.body }}</p>
+            </div>
+        {% empty %}
+            <p class="no-posts">No posts available.</p>
+        {% endfor %} {% endcomment %}
+    </div>
+</div>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    .container {
+        width: 50%;
+        margin: auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1, h3 {
+        text-align: center;
+    }
+
+    .post-form {
+        padding: 15px;
+        border-bottom: 2px solid #ddd;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+    label {
+        font-weight: bold;
+        display: block;
+    }
+
+    input, textarea, select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    .submit-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .submit-btn:hover {
+        background: #0056b3;
+    }
+
+    .post {
+        padding: 15px;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        background: #fff;
+    }
+
+    .author {
+        font-weight: bold;
+        color: #007bff;
+    }
+
+    .date {
+        font-size: 0.9em;
+        color: gray;
+    }
+
+    .body {
+        margin-top: 5px;
+    }
+
+    .error {
+        color: red;
+        font-size: 0.9em;
+    }
+
+    .no-posts {
+        text-align: center;
+        color: gray;
+    }
+</style>
+{% endblock content %}

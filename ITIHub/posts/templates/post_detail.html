@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Post Details</h1>
+
+    <div class="post">
+        <h2>Post ID: {{ post.id }}</h2> 
+        <p class="author">By {{ post.author }}</p>
+        <p class="date">{{ post.created_on|date:"F d, Y H:i" }}</p>
+        <p class="body">{{ post.body }}</p>
+        <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+        <a href="{% url 'post_delete' post.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+    </div>
+    {% for post in post_list %}
+    <div class="post">
+        <p>{{ post.body }}</p>
+
+        <!-- Display Post Attachments -->
+        {% for attachment in post.attachments.all %}
+            {% if attachment.image %}
+                <img src="{{ attachment.image.url }}" alt="Post Image" width="300">
+            {% endif %}
+            {% if attachment.video %}
+                <video width="300" controls>
+                    <source src="{{ attachment.video.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endfor %}
+
+    <!-- Display Comments -->
+    <div class="comments">
+        <h5>Comments:</h5>
+        {% if post.comments.all %}
+        <ul class="comment-list">
+            {% for comment in post.comments.all %}
+                <li class="comment-item">
+                    <div class="comment-header">
+                        <strong class="comment-author">
+                            {{ comment.author.username|default:"Anonymous" }}
+                        </strong> 
+                        <span class="comment-date">{{ comment.created_on|date:"F d, Y H:i" }}</span>
+                    </div>
+                    <p class="comment-text">{{ comment.comment }}</p>
+                </li>
+                <a href="{% url 'comment_edit' comment.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                <a href="{% url 'comment_delete' comment.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+            {% endfor %}
+        </ul>
+        
+        {% else %}
+            <p class="no-comments">No comments yet. Be the first to comment!</p>
+        {% endif %}
+    </div>
+  <!-- Comment Form -->
+   <div class="comment-form">
+        <h5>Add a Comment</h5>
+        <form method="POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+            {{ attachment_form.as_p }} 
+            <button type="submit" class="submit-btn">Comment</button> 
+        </form>
+    </div> 
+    <a href="{% url 'post-list' %}" class="back-link"> ← Back to Feed</a>
+</div>
+<style>
+    .container {
+        width: 50%;
+        margin: auto;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    .post, .comments, .comment-form {
+        padding: 15px;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+        border-radius: 5px;
+        background: #fff;
+    }
+    .submit-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+{% endblock content %}

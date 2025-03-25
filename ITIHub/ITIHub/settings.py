@@ -17,7 +17,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 AUTH_USER_MODEL = "users.User"
-LOGIN_URL = "login"  # Redirect users to login page if not authenticated
+LOGIN_URL = '/users/student/login/'  # Redirect users to login page if not authenticated
 LOGIN_REDIRECT_URL = "home"  # Redirect after login
 LOGOUT_REDIRECT_URL = "login"  # Redirect after logout
 
@@ -25,6 +25,10 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 
+import os
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -41,6 +45,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    # 'rest_framework', 
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -54,20 +59,20 @@ INSTALLED_APPS = [
     "notifications",
     "chat",
     'django_extensions',
-    'rest_framework',
-    'rest_framework.authtoken',
-    "rest_framework_simplejwt.token_blacklist", 
 ]
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
-    ],
-}
 
+#start
+# REST_FRAMEWORK = {
+#     'DEFAULT_AUTHENTICATION_CLASSES': (
+#         'rest_framework.authentication.SessionAuthentication',
+#         'rest_framework.authentication.TokenAuthentication',
+#     ),
+#     'DEFAULT_PERMISSION_CLASSES': (
+#         'rest_framework.permissions.IsAuthenticated',
+#     ),
+# }
+#end
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -142,6 +147,7 @@ USE_I18N = True
 
 USE_TZ = True
 
+# LOGIN_URL = '/login/'  # Redirect unauthenticated users to login
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
