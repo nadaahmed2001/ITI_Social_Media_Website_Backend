@@ -1,9 +1,15 @@
 from rest_framework.permissions import BasePermission
 
-class IsSupervisor(BasePermission):
+
+class IsStudentOrSupervisor(BasePermission):
     """
-    Custom permission to allow only supervisors to access certain views.
+    Custom permission to allow only students or supervisors to access a view.
     """
 
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and request.user.is_supervisor
+        # Ensure user is authenticated first
+        if not request.user or not request.user.is_authenticated:
+            return False  # Block unauthenticated users
+        
+        # Check if user is a student or a supervisor
+        return getattr(request.user, "is_student", False) or getattr(request.user, "is_supervisor", False)

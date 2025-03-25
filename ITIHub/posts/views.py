@@ -4,9 +4,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Attachment
 from .serializers import PostSerializer, CommentSerializer
-from users.decorators import student_required
+from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
+from users.permissions import IsStudentOrSupervisor
 
 #  List & Create Posts
 class PostListCreateView(generics.ListCreateAPIView):
@@ -51,14 +52,14 @@ class PostLikeDislikeView(APIView):
         return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
 #  Add Comment
-@method_decorator(student_required, name='dispatch')
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStudentOrSupervisor]  # Use the new permission class
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
 
 #  Edit & Delete Comment
 class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):

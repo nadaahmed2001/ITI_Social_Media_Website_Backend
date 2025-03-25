@@ -34,21 +34,21 @@ def notify_group_message(sender, instance, created, **kwargs):
         ]
         Notification.objects.bulk_create(notifications)  # Bulk insert to optimize DB queries
 
-# Notify for mentions in comments
-@receiver(post_save, sender=Comment)
-def notify_mentions_in_comments(sender, instance, created, **kwargs):
-    if created:
-        mentioned_users = [user for user in User.objects.all() if f"@{user.username}" in instance.content]
-        notifications = [
-            Notification(
-                recipient=user,
-                sender=instance.author,
-                notification_type="mention",
-                related_object_id=instance.id
-            )
-            for user in mentioned_users
-        ]
-        Notification.objects.bulk_create(notifications)
+# # Notify for mentions in comments
+# @receiver(post_save, sender=Comment)
+# def notify_mentions_in_comments(sender, instance, created, **kwargs):
+#     if created:
+#         mentioned_users = [user for user in User.objects.all() if f"@{user.username}" in instance.content]
+#         notifications = [
+#             Notification(
+#                 recipient=user,
+#                 sender=instance.author,
+#                 notification_type="mention",
+#                 related_object_id=instance.id
+#             )
+#             for user in mentioned_users
+#         ]
+#         Notification.objects.bulk_create(notifications)
 
 # Notify when a student joins a batch
 @receiver(post_save, sender=User)
