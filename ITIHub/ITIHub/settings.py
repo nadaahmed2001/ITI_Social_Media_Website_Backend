@@ -59,7 +59,15 @@ INSTALLED_APPS = [
     "notifications",
     "chat",
     'django_extensions',
+    "rest_framework", 
+    "rest_framework.authtoken",
 ]
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+}
 
 
 #start
@@ -102,6 +110,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "ITIHub.wsgi.application"
+ASGI_APPLICATION = 'ITIHub.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 
