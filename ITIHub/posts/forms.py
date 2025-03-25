@@ -22,7 +22,11 @@ class CommentForm(forms.ModelForm):
         fields = ['comment']
 
 class AttachmentForm(forms.ModelForm):
+    image = forms.FileField(widget=forms.ClearableFileInput(), required=False)
+    video = forms.FileField(widget=forms.ClearableFileInput(), required=False)
+
     class Meta:
         model = Attachment
         fields = ['image', 'video']
+
 

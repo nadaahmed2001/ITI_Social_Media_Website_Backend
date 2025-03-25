@@ -14,6 +14,8 @@ class User(AbstractUser):
     is_student = models.BooleanField(default=False)
     is_supervisor = models.BooleanField(default=False)
 
+    is_active = models.BooleanField(default=False)  # Account activation flag
+
     # Student-specific: National ID (only required for students)
     national_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
 

@@ -1,22 +1,22 @@
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("supervisor_pages/", include("batches.urls")),
-    path("users/", include("users.urls")),   # Authentication URLs
-    # path("", include("django.contrib.auth.urls")),  # Default login/logout/password reset
-    path('admin/', admin.site.urls),
-    path('chat/', include('chat.urls')),
-    path('notifications/', include('notifications.urls')),
-        # path("", include("django.contrib.auth.urls")),  # Default login/logout/password reset
-    path("post/" , include('posts.urls')),
+    path("admin/", admin.site.urls),  # Admin panel
+    
+    # Authentication & Users
+    path("users/", include("users.urls")),  
+
+    # API Endpoints
     path("api/", include([
-        path("batches/", include("batches.urls")),
+        path("supervisor/", include("batches.urls")),  
+        path("chat/", include("chat.urls")),  
+        path("notifications/", include("notifications.urls")),  
+        path("posts/", include("posts.urls")),
+        path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+        path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+        
     ])),
 ]
-
-
-
-

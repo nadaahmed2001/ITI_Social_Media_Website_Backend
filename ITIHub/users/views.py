@@ -12,21 +12,28 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 class RegisterStudentView(APIView):
     def post(self, request):
+        print("I am in the register student view")
         serializer = RegisterStudentSerializer(data=request.data)
         if serializer.is_valid():
             national_id = serializer.validated_data["national_id"]
 
             try:
                 unverified_entry = UnverifiedNationalID.objects.get(national_id=national_id)
+                print("I have found the unverified entry: ", unverified_entry)
+
+                # Ensure the student hasn't already registered
+                if VerifiedNationalID.objects.filter(national_id=national_id).exists():
+                    return Response({"error": "This National ID is already registered"}, status=status.HTTP_400_BAD_REQUEST)
+
                 batch = unverified_entry.batch
-
-                if not batch:
-                    return Response({"error": "No batch assigned to this National ID"}, status=status.HTTP_400_BAD_REQUEST)
-
                 user = serializer.save()
+                user.is_student = True
+                user.is_active = True
+                user.save()
                 VerifiedNationalID.objects.create(national_id=national_id, batch=batch)
                 StudentBatch.objects.create(student=user, batch=batch)
                 unverified_entry.delete()
+
 
                 return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
             except UnverifiedNationalID.DoesNotExist:

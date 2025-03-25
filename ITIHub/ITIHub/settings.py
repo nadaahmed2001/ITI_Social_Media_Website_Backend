@@ -23,7 +23,9 @@ LOGOUT_REDIRECT_URL = "login"  # Redirect after logout
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
+    # "users.backends.CustomAuthBackend",  # If using custom backend
 ]
+
 
 import os
 
@@ -41,19 +43,16 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
-
 INSTALLED_APPS = [
-    # 'rest_framework', 
-    "django.contrib.admin",
+    "users",  # Custom User Model App (Must be before auth)
     "django.contrib.auth",
+    "django.contrib.admin",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "batches",
-    "users",
     "groups",
     "posts",
     "notifications",
@@ -61,11 +60,14 @@ INSTALLED_APPS = [
     'django_extensions',
     "rest_framework", 
     "rest_framework.authtoken",
+    'rest_framework_simplejwt',
 ]
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
 

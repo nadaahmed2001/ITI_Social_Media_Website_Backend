@@ -14,8 +14,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin , LoginRequiredMixin
 
 
-
-
 class PostListView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         posts = Post.objects.all().order_by('-created_on')
@@ -34,25 +32,23 @@ class PostListView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         if 'post_submit' in request.POST:
             post_form = PostForm(request.POST)
-            
+            attachment_form = AttachmentForm(request.POST, request.FILES)
+
             if post_form.is_valid():
                 new_post = post_form.save(commit=False)
                 new_post.author = request.user
                 new_post.save()
 
-                # Handle multiple image and video attachments
-                for file in request.FILES.getlist('image'):
-                    attachment = Attachment.objects.create(image=file)
-                    new_post.attachments.add(attachment)
-
-                for file in request.FILES.getlist('video'):
-                    attachment = Attachment.objects.create(video=file)
+                # Handle multiple attachments in one efficient loop
+                for file in request.FILES.getlist('image') + request.FILES.getlist('video'):
+                    attachment = Attachment.objects.create(image=file if file.content_type.startswith('image') else None, video=file if file.content_type.startswith('video') else None)
                     new_post.attachments.add(attachment)
 
                 return redirect('post-list')
 
         return redirect('post-list')
-    
+
+
 class PostDetailView(LoginRequiredMixin, View):
     def get(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
@@ -65,6 +61,7 @@ class PostDetailView(LoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
         form = CommentForm(request.POST)
+        attachment_form = AttachmentForm(request.POST, request.FILES)
 
         if form.is_valid():
             comment = form.save(commit=False)
@@ -73,18 +70,14 @@ class PostDetailView(LoginRequiredMixin, View):
             comment.save()
 
             # Handle multiple attachments
-            for file in request.FILES.getlist('image'):
-                attachment = Attachment.objects.create(image=file)
-                comment.attachments.add(attachment)
-
-            for file in request.FILES.getlist('video'):
-                attachment = Attachment.objects.create(video=file)
+            for file in request.FILES.getlist('image') + request.FILES.getlist('video'):
+                attachment = Attachment.objects.create(image=file if file.content_type.startswith('image') else None,
+                                                       video=file if file.content_type.startswith('video') else None)
                 comment.attachments.add(attachment)
 
             return redirect('post-detail', pk=post.pk)
 
         return render(request, 'post_detail.html', {'post': post, 'form': form})
-
 
 
 class PostEditView(LoginRequiredMixin,UserPassesTestMixin,UpdateView):
@@ -132,54 +125,14 @@ class CommentDeleteView(LoginRequiredMixin,UserPassesTestMixin,DeleteView):
 
 class AddLike(LoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
-        post = Post.objects.get(pk=pk)
-    
-        is_dislike = False
-        for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
-            if dislike == request.user:
-                is_dislike = True
-                break
-        if is_dislike:
-            post.dislikes.remove(request.user)  # ✅ Fix here too
+        post = get_object_or_404(Post, pk=pk)
+        post.toggle_like(request.user)  # Now using model method
+        return HttpResponseRedirect(request.POST.get('next', '/'))
 
-        is_like = False
-        for like in post.likes.all():
-            if like == request.user:
-                is_like = True
-                break
-
-        if not is_like:
-            post.likes.add(request.user)
-
-        if is_like:
-            post.likes.remove(request.user)
-        
-        next_url = request.POST.get('next', '/')
-        return HttpResponseRedirect(next_url)
 
 class Dislike(LoginRequiredMixin, View):
     def post(self, request, pk, *args, **kwargs):
-        post = Post.objects.get(pk=pk)
+        post = get_object_or_404(Post, pk=pk)
+        post.toggle_dislike(request.user)  # Now using model method
+        return HttpResponseRedirect(request.POST.get('next', '/'))
 
-        is_like = False
-        for like in post.likes.all():
-            if like == request.user:
-                is_like = True
-                break
-        if is_like:
-            post.likes.remove(request.user)
-
-        is_dislike = False
-        for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
-            if dislike == request.user:
-                is_dislike = True
-                break
-
-        if not is_dislike:
-            post.dislikes.add(request.user)  # ✅ Fix here too
-
-        if is_dislike:
-            post.dislikes.remove(request.user)  # ✅ Fix here too
-
-        next_url = request.POST.get('next', '/')
-        return HttpResponseRedirect(next_url)

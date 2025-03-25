@@ -10,14 +10,29 @@ class Attachment(models.Model):
     video = models.FileField(upload_to="attachments/", null=True, blank=True)
     uploaded_on = models.DateTimeField( default=timezone.now) 
 
-
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     body = models.TextField()
-    created_on = models.DateTimeField(default=timezone.now) 
-    likes = models.ManyToManyField(User, blank=True, related_name='likes')
-    dislikes = models.ManyToManyField(User, blank=True, related_name='dislikes')
-    attachments = models.ManyToManyField(Attachment, blank=True)  # Allow multiple attachments
+    created_on = models.DateTimeField(default=timezone.now)
+    likes = models.ManyToManyField(User, blank=True, related_name='liked_posts')
+    dislikes = models.ManyToManyField(User, blank=True, related_name='disliked_posts')
+    attachments = models.ManyToManyField(Attachment, blank=True)
+
+    def toggle_like(self, user):
+        if self.dislikes.filter(id=user.id).exists():
+            self.dislikes.remove(user)  # Remove from dislikes if already disliked
+        if self.likes.filter(id=user.id).exists():
+            self.likes.remove(user)
+        else:
+            self.likes.add(user)
+
+    def toggle_dislike(self, user):
+        if self.likes.filter(id=user.id).exists():
+            self.likes.remove(user)  # Remove from likes if already liked
+        if self.dislikes.filter(id=user.id).exists():
+            self.dislikes.remove(user)
+        else:
+            self.dislikes.add(user)
 
 #start
 # class Post(models.Model):
