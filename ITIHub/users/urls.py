@@ -1,13 +1,14 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views
-from .views import  supervisor_login_view, supervisor_logout, student_login, student_logout, student_dashboard, student_register
+from rest_framework_simplejwt.views import TokenRefreshView
+from .views import RegisterStudentView, LoginView, LogoutView, UserProfileView
 
 urlpatterns = [
-    path("supervisor/login/", supervisor_login_view, name="supervisor_login"),
-    path("supervisor/logout/", supervisor_logout, name="supervisor_logout"),
-    path("student/login/", student_login, name="student_login"),
-    path("student/register/", student_register, name="student_register"),
-    path("student/logout/", student_logout, name="student_logout"),
-    path("student/dashboard/", student_dashboard, name="student_dashboard"),
+    path("register/", RegisterStudentView.as_view(), name="register_student"),
+    path("login/", LoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(), name="logout"),
+    path("profile/", UserProfileView.as_view(), name="user_profile"),
+
+    path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 ]
+
 

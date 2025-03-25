@@ -1,75 +1,43 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from .models import Track, Batch, Program, Department, VerifiedNationalID, UnverifiedNationalID, StudentBatch, Student
-from django.shortcuts import render, redirect
-import csv
-from django.core.exceptions import PermissionDenied
-import csv
-from users.decorators import supervisor_required
-from django.contrib import messages
-from .forms import BatchForm
-from django.http import HttpResponse
-
-
-
-
-# Create your views here.
-
-@supervisor_required
-def dashboard(request):
-    print("I'm now inside the supervisor dashboard")
-    # tracks = Track.objects.all()
-    Programs = Program.objects.all()
-    # print("Tracks: ", tracks)
-    print("Programs: ", Programs)
-    user=request.user
-    return render(request, 'supervisor_dashboard.html', {'Programs': Programs, 'User': user})
-
-def program_details(request, program_id):
-    print("I'm now inside the program details")
-    program = get_object_or_404(Program, pk=program_id)
-    tracks= Track.objects.filter(program=program)
-    return render(request, 'program_details.html', {'Program': program, 'Tracks': tracks})
-
-def track_batches(request, track_id):
-    track = get_object_or_404(Track, pk=track_id)
-    batches = Batch.objects.filter(track=track)
-    return render(request, 'track_batches.html', {'Track': track, 'Batches': batches})
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.decorators import user_passes_test
+from .models import Program, Track, Batch
+from .serializers import ProgramSerializer, TrackSerializer, BatchSerializer
+from rest_framework import viewsets
+from .models import Department, StudentBatch
+from .serializers import DepartmentSerializer, StudentBatchSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .models import Program, Track, Batch
+from .serializers import ProgramSerializer, TrackSerializer, BatchSerializer
 
 
 
 
 
-@supervisor_required
-def create_batch(request):
-    if request.method == "POST":
-        form = BatchForm(request.POST, request.FILES)
-        if form.is_valid():
-            batch = form.save(commit=False)
-            # batch.supervisor = request.user  # Assign logged-in supervisor
-            batch.status = "Active"
-            batch.save()
+class DepartmentViewSet(viewsets.ModelViewSet):
+    queryset = Department.objects.all()
+    serializer_class = DepartmentSerializer
+    permission_classes = [IsAuthenticated]
 
-            # Process CSV file if uploaded
-            csv_file = request.FILES.get("csv_file")
-            if csv_file:
-                decoded_file = csv_file.read().decode("utf-8").splitlines()
-                reader = csv.reader(decoded_file)
-                for row in reader:
-                    national_id = row[0].strip()
-                    # if this national exists in the verified list, assign it to the new batch in studentBatch table and in the verified table
-                    if VerifiedNationalID.objects.filter(national_id=national_id).exists():
-                        VerifiedNationalID.objects.create(national_id=national_id, batch=batch)
-                        # get the student object and assign it to the batch
-                        student= Student.objects.get(user__national_id=national_id)
-                        StudentBatch.objects.create(student=student, batch=batch)
-                    else:
-                        UnverifiedNationalID.objects.create(national_id=national_id, batch=batch)
+class ProgramViewSet(viewsets.ModelViewSet):
+    queryset = Program.objects.all()
+    serializer_class = ProgramSerializer
+    permission_classes = [IsAuthenticated]
 
-            messages.success(request, "Batch created successfully!")
-            return redirect("supervisor_dashboard")  # Redirect to dashboard
+class TrackViewSet(viewsets.ModelViewSet):
+    queryset = Track.objects.all()
+    serializer_class = TrackSerializer
+    permission_classes = [IsAuthenticated]
 
-    else:
-        form = BatchForm()
+class BatchViewSet(viewsets.ModelViewSet):
+    queryset = Batch.objects.all()
+    serializer_class = BatchSerializer
+    permission_classes = [IsAuthenticated]
 
-    tracks = Track.objects.all()
-    return render(request, "create_batch.html", {"form": form, "tracks": tracks})
+class StudentBatchViewSet(viewsets.ModelViewSet):
+    queryset = StudentBatch.objects.all()
+    serializer_class = StudentBatchSerializer
+    permission_classes = [IsAuthenticated]
