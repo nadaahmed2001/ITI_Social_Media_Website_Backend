@@ -1,58 +1,228 @@
-# import json  # Add this import at the top
-# import logging
 from django.shortcuts import render, get_object_or_404 , redirect
 from django.urls import reverse_lazy
 from django.http import HttpResponseRedirect
 from django.views import View
 from django.views.generic.edit import UpdateView, DeleteView
-from .models import Post , Comment, Attachment  
+from .models import Post , Comment, Attachment  , Reaction
 from django.http import JsonResponse
-from .forms import PostForm, CommentForm ,AttachmentForm
+from .forms import PostForm, CommentForm ,AttachmentForm 
 from django.contrib.auth.models import User
-from .forms import PostForm, CommentForm 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import UserPassesTestMixin , LoginRequiredMixin
-
-
-
+from django.db import IntegrityError  # Add this import
 
 class PostListView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
-        posts = Post.objects.all().order_by('-created_on')
-        post_form = PostForm()
-        comment_form = CommentForm()
-        attachment_form = AttachmentForm()
-
+        posts = Post.objects.prefetch_related('reaction_set', 'comments__reaction_set').order_by('-created_on')
+        
+        for post in posts:
+            post.reaction_counts = {
+                'Like': post.reaction_set.filter(reaction_type='Like').count(),
+                'Heart': post.reaction_set.filter(reaction_type='Heart').count(),
+                'Celebrate': post.reaction_set.filter(reaction_type='Celebrate').count(),
+                'Laugh': post.reaction_set.filter(reaction_type='Laugh').count(),
+                'Insightful': post.reaction_set.filter(reaction_type='Insightful').count(),
+                'Support': post.reaction_set.filter(reaction_type='Support').count(),
+            }
+            
+            for comment in post.comments.all():
+                comment.reaction_counts = {
+                    'Like': comment.reaction_set.filter(reaction_type='Like').count(),
+                    'Heart': comment.reaction_set.filter(reaction_type='Heart').count(),
+                    'Celebrate': comment.reaction_set.filter(reaction_type='Celebrate').count(),
+                    'Laugh': comment.reaction_set.filter(reaction_type='Laugh').count(),
+                    'Insightful': comment.reaction_set.filter(reaction_type='Insightful').count(),
+                    'Support': comment.reaction_set.filter(reaction_type='Support').count(),
+                }
+        
         context = {
             'post_list': posts,
-            'post_form': post_form,
-            'comment_form': comment_form,
-            'attachment_form': attachment_form,
+            'post_form': PostForm(),
+            'comment_form': CommentForm(),
+            'attachment_form': AttachmentForm(),
         }
         return render(request, 'post_list.html', context)
-
+    
     def post(self, request, *args, **kwargs):
         if 'post_submit' in request.POST:
             post_form = PostForm(request.POST)
-            
             if post_form.is_valid():
                 new_post = post_form.save(commit=False)
                 new_post.author = request.user
                 new_post.save()
-
-                # Handle multiple image and video attachments
                 for file in request.FILES.getlist('image'):
-                    attachment = Attachment.objects.create(image=file)
-                    new_post.attachments.add(attachment)
-
-                for file in request.FILES.getlist('video'):
-                    attachment = Attachment.objects.create(video=file)
-                    new_post.attachments.add(attachment)
-
+                    Attachment.objects.create(image=file, post=new_post)
                 return redirect('post-list')
 
+        elif 'comment_submit' in request.POST:
+            comment_form = CommentForm(request.POST)
+            post_id = request.POST.get('post_id')  # Get post ID from hidden field
+            post = get_object_or_404(Post, id=post_id)
+
+            if comment_form.is_valid():
+                new_comment = comment_form.save(commit=False)
+                new_comment.author = request.user
+                new_comment.post = post
+                new_comment.save()
+
+                # Save attachments if provided
+                for file in request.FILES.getlist('image'):
+                    attachment = Attachment.objects.create(image=file)
+                    new_comment.attachments.add(attachment)
+
+                return redirect('post-list')  # Redirect back to the home page
+
         return redirect('post-list')
+
+# class PostListView(LoginRequiredMixin, View):
+#     def get(self, request, *args, **kwargs):
+#         posts = Post.objects.all().order_by('-created_on')
+        
+#         for post in posts:
+#             post.reaction_counts = {
+#                 'Like': post.reaction_set.filter(reaction_type='Like').count(),
+#                 'Heart': post.reaction_set.filter(reaction_type='Heart').count(),
+#                 'Celebrate': post.reaction_set.filter(reaction_type='Celebrate').count(),
+#                 'Laugh': post.reaction_set.filter(reaction_type='Laugh').count(),
+#                 'Insightful': post.reaction_set.filter(reaction_type='Insightful').count(),
+#                 'Support': post.reaction_set.filter(reaction_type='Support').count(),
+#             }
+            
+#             for comment in post.comments.all():
+#                 comment.reaction_counts = {
+#                     'Like': comment.reaction_set.filter(reaction_type='Like').count(),
+#                     'Heart': comment.reaction_set.filter(reaction_type='Heart').count(),
+#                     'Celebrate': comment.reaction_set.filter(reaction_type='Celebrate').count(),
+#                     'Laugh': comment.reaction_set.filter(reaction_type='Laugh').count(),
+#                     'Insightful': comment.reaction_set.filter(reaction_type='Insightful').count(),
+#                     'Support': comment.reaction_set.filter(reaction_type='Support').count(),
+#                 }
+        
+#         context = {
+#             'post_list': posts,
+#             'post_form': PostForm(),
+#             'comment_form': CommentForm(),
+#             'attachment_form': AttachmentForm(),
+#         }
+#         return render(request, 'post_list.html', context)
     
+#     def post(self, request, *args, **kwargs):
+#         if 'post_submit' in request.POST:
+#             post_form = PostForm(request.POST)
+#             if post_form.is_valid():
+#                 new_post = post_form.save(commit=False)
+#                 new_post.author = request.user
+#                 new_post.save()
+#                 for file in request.FILES.getlist('image'):
+#                     Attachment.objects.create(image=file, post=new_post)
+#                 return redirect('post-list')
+
+#         elif 'comment_submit' in request.POST:
+#             comment_form = CommentForm(request.POST)
+#             post_id = request.POST.get('post_id')  # Get post ID from hidden field
+#             post = get_object_or_404(Post, id=post_id)
+
+#             if comment_form.is_valid():
+#                 new_comment = comment_form.save(commit=False)
+#                 new_comment.author = request.user
+#                 new_comment.post = post
+#                 new_comment.save()
+
+#                 # Save attachments if provided
+#                 for file in request.FILES.getlist('image'):
+#                     attachment = Attachment.objects.create(image=file)
+#                     new_comment.attachments.add(attachment)
+
+#                 return redirect('post-list')  # Redirect back to the home page
+
+#         return redirect('post-list')
+
+# class PostListView(LoginRequiredMixin, View):
+#     def get(self, request, *args, **kwargs):
+#         posts = Post.objects.all().order_by('-created_on')
+#         for post in posts:
+#             post.reaction_counts = {
+#                 'Like': post.reaction_set.filter(reaction_type='Like').count(),
+#                 'Heart': post.reaction_set.filter(reaction_type='Heart').count(),
+#                 'Celebrate': post.reaction_set.filter(reaction_type='Celebrate').count(),
+#                 'Laugh': post.reaction_set.filter(reaction_type='Laugh').count(),
+#                 'Insightful': post.reaction_set.filter(reaction_type='Insightful').count(),
+#                 'Support': post.reaction_set.filter(reaction_type='Support').count(),
+#             }
+        
+#         context = {
+#             'post_list': posts,
+#             'post_form': PostForm(),
+#             'comment_form': CommentForm(),
+#             'attachment_form': AttachmentForm(),
+#         }
+#         return render(request, 'post_list.html', context)
+    
+#     def post(self, request, *args, **kwargs):
+#         if 'post_submit' in request.POST:
+#             post_form = PostForm(request.POST)
+#             if post_form.is_valid():
+#                 new_post = post_form.save(commit=False)
+#                 new_post.author = request.user
+#                 new_post.save()
+#                 for file in request.FILES.getlist('image'):
+#                     Attachment.objects.create(image=file, post=new_post)
+#                 return redirect('post-list')
+
+#         elif 'comment_submit' in request.POST:
+#             comment_form = CommentForm(request.POST)
+#             post_id = request.POST.get('post_id')  # Get post ID from hidden field
+#             post = get_object_or_404(Post, id=post_id)
+
+#             if comment_form.is_valid():
+#                 new_comment = comment_form.save(commit=False)
+#                 new_comment.author = request.user
+#                 new_comment.post = post
+#                 new_comment.save()
+
+#                 # Save attachments if provided
+#                 for file in request.FILES.getlist('image'):
+#                     attachment = Attachment.objects.create(image=file)
+#                     new_comment.attachments.add(attachment)
+
+#                 return redirect('post-list')  # Redirect back to the home page
+
+#         return redirect('post-list')
+
+# class PostListView(LoginRequiredMixin, View):
+#     def get(self, request, *args, **kwargs):
+#         posts = Post.objects.all().order_by('-created_on')
+#         for post in posts:
+#             post.reaction_counts = {
+#                 'Like': post.reaction_set.filter(reaction_type='Like').count(),
+#                 'Heart': post.reaction_set.filter(reaction_type='Heart').count(),
+#                 'Celebrate': post.reaction_set.filter(reaction_type='Celebrate').count(),
+#                 'Laugh': post.reaction_set.filter(reaction_type='Laugh').count(),
+#                 'Insightful': post.reaction_set.filter(reaction_type='Insightful').count(),
+#                 'Support': post.reaction_set.filter(reaction_type='Support').count(),
+#             }
+        
+#         context = {
+#             'post_list': posts,
+#             'post_form': PostForm(),
+#             'comment_form': CommentForm(),
+#             'attachment_form': AttachmentForm(),
+#         }
+#         return render(request, 'post_list.html', context)
+    
+#     def post(self, request, *args, **kwargs):
+#         if 'post_submit' in request.POST:
+#             post_form = PostForm(request.POST)
+#             if post_form.is_valid():
+#                 new_post = post_form.save(commit=False)
+#                 new_post.author = request.user
+#                 new_post.save()
+#                 for file in request.FILES.getlist('image'):
+#                     Attachment.objects.create(image=file, post=new_post)
+#                 return redirect('post-list')
+#         return redirect('post-list')
+
+
 class PostDetailView(LoginRequiredMixin, View):
     def get(self, request, pk, *args, **kwargs):
         post = get_object_or_404(Post, pk=pk)
@@ -77,9 +247,9 @@ class PostDetailView(LoginRequiredMixin, View):
                 attachment = Attachment.objects.create(image=file)
                 comment.attachments.add(attachment)
 
-            for file in request.FILES.getlist('video'):
-                attachment = Attachment.objects.create(video=file)
-                comment.attachments.add(attachment)
+            for file in request.FILES.getlist('image'):
+                 attachment = Attachment.objects.create(image=file, comment=comment)
+
 
             return redirect('post-detail', pk=post.pk)
 
@@ -129,57 +299,173 @@ class CommentDeleteView(LoginRequiredMixin,UserPassesTestMixin,DeleteView):
     def test_func(self):
         post = self.get_object()
         return self.request.user == post.author
+# start
+class AddReaction(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        reaction_type = kwargs.get('reaction_type')  # Get from URL parameter
+        post_id = kwargs.get('post_id', None)
+        comment_id = kwargs.get('comment_id', None)
 
-class AddLike(LoginRequiredMixin, View):
-    def post(self, request, pk, *args, **kwargs):
-        post = Post.objects.get(pk=pk)
+        try:
+            if post_id:
+                # Handle post reaction
+                post = get_object_or_404(Post, id=post_id)
+                reaction, created = Reaction.objects.update_or_create(
+                    user=request.user,
+                    post=post,
+                    comment=None,
+                    defaults={'reaction_type': reaction_type}
+                )
+            elif comment_id:
+                # Handle comment reaction
+                comment = get_object_or_404(Comment, id=comment_id)
+                reaction, created = Reaction.objects.update_or_create(
+                    user=request.user,
+                    comment=comment,
+                    post=None,
+                    defaults={'reaction_type': reaction_type}
+                )
+            return redirect(request.META.get('HTTP_REFERER', 'post-list'))
+            
+        except IntegrityError as e:
+            # Handle any remaining constraints
+            return redirect(request.META.get('HTTP_REFERER', 'post-list'))
     
-        is_dislike = False
-        for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
-            if dislike == request.user:
-                is_dislike = True
-                break
-        if is_dislike:
-            post.dislikes.remove(request.user)  # ✅ Fix here too
+class ViewCommentReactions(LoginRequiredMixin, View):
+    def get(self, request, *args, **kwargs):
+        comment = get_object_or_404(Comment, id=kwargs.get('comment_id'))
+        reactions = Reaction.objects.filter(comment=comment).select_related('user')
+        return render(request, 'viewReactions-comment.html', {
+            'comment': comment,
+            'reactions': reactions
+        })
+#end
+# class AddReaction(LoginRequiredMixin, View):
+#     def post(self, request, *args, **kwargs):
+#         reaction_type = request.POST.get('reaction_type')
+#         post_id = kwargs.get('post_id')
+#         comment_id = kwargs.get('comment_id', None)
 
-        is_like = False
-        for like in post.likes.all():
-            if like == request.user:
-                is_like = True
-                break
+#         if post_id:
+#             post = get_object_or_404(Post, id=post_id)
+#             reaction, created = Reaction.objects.get_or_create(user=request.user, post=post, comment=None, defaults={'reaction_type': reaction_type})
+#             if not created:
+#                 reaction.reaction_type = reaction_type
+#                 reaction.save()
+#         elif comment_id:
+#             comment = get_object_or_404(Comment, id=comment_id)
+#             reaction, created = Reaction.objects.get_or_create(user=request.user, comment=comment, post=None, defaults={'reaction_type': reaction_type})
+#             if not created:
+#                 reaction.reaction_type = reaction_type
+#                 reaction.save()
 
-        if not is_like:
-            post.likes.add(request.user)
+#         return redirect(request.META.get('HTTP_REFERER', 'post-list'))
+#start
+class RemoveReaction(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        post_id = kwargs.get('post_id', None)
+        comment_id = kwargs.get('comment_id', None)
 
-        if is_like:
-            post.likes.remove(request.user)
+        if post_id:
+            post = get_object_or_404(Post, id=post_id)
+            Reaction.objects.filter(user=request.user, post=post).delete()
+        elif comment_id:
+            comment = get_object_or_404(Comment, id=comment_id)
+            Reaction.objects.filter(user=request.user, comment=comment).delete()
+
+        return redirect(request.META.get('HTTP_REFERER', 'post-list'))
+    
+#end
+# class RemoveReaction(LoginRequiredMixin, View):
+#     def post(self, request, post_id, *args, **kwargs):
+#         post = get_object_or_404(Post, id=post_id)
+#         Reaction.objects.filter(user=request.user, post=post).delete()
+#         return redirect(request.POST.get('next', '/'))
+
+class ViewReactionsView(LoginRequiredMixin, View):
+    def get(self, request, post_id, *args, **kwargs):
+        post = get_object_or_404(Post, id=post_id)
+        reactions = post.reaction_set.all().select_related('user')  # Optimize query
+
+        context = {
+            'post': post,
+            'reactions': reactions
+        }
+        return render(request, 'viewReactions.html', context)
+# end
+# class AddReaction(LoginRequiredMixin, View):
+#     def post(self, request, post_id, reaction_type, *args, **kwargs):
+#         post = get_object_or_404(Post, id=post_id)
+
+#         # Check if the user has already reacted to this post
+#         existing_reaction = Reaction.objects.filter(user=request.user, post=post).first()
+
+#         if existing_reaction:
+#             # If the reaction is the same, remove it (toggle behavior)
+#             if existing_reaction.reaction_type == reaction_type:
+#                 existing_reaction.delete()
+#                 return redirect(request.POST.get('next', '/'))
+#             else:
+#                 # Update reaction if it's different
+#                 existing_reaction.reaction_type = reaction_type
+#                 existing_reaction.save()
+#         else:
+#             # Create new reaction
+#             Reaction.objects.create(user=request.user, post=post, reaction_type=reaction_type)
+
+#         return redirect(request.POST.get('next', '/'))
+
+
+# class AddLike(LoginRequiredMixin, View):
+#     def post(self, request, pk, *args, **kwargs):
+#         post = Post.objects.get(pk=pk)
+    
+#         is_dislike = False
+#         for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
+#             if dislike == request.user:
+#                 is_dislike = True
+#                 break
+#         if is_dislike:
+#             post.dislikes.remove(request.user)  # ✅ Fix here too
+
+#         is_like = False
+#         for like in post.likes.all():
+#             if like == request.user:
+#                 is_like = True
+#                 break
+
+#         if not is_like:
+#             post.likes.add(request.user)
+
+#         if is_like:
+#             post.likes.remove(request.user)
         
-        next_url = request.POST.get('next', '/')
-        return HttpResponseRedirect(next_url)
+#         next_url = request.POST.get('next', '/')
+#         return HttpResponseRedirect(next_url)
 
-class Dislike(LoginRequiredMixin, View):
-    def post(self, request, pk, *args, **kwargs):
-        post = Post.objects.get(pk=pk)
+# class Dislike(LoginRequiredMixin, View):
+#     def post(self, request, pk, *args, **kwargs):
+#         post = Post.objects.get(pk=pk)
 
-        is_like = False
-        for like in post.likes.all():
-            if like == request.user:
-                is_like = True
-                break
-        if is_like:
-            post.likes.remove(request.user)
+#         is_like = False
+#         for like in post.likes.all():
+#             if like == request.user:
+#                 is_like = True
+#                 break
+#         if is_like:
+#             post.likes.remove(request.user)
 
-        is_dislike = False
-        for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
-            if dislike == request.user:
-                is_dislike = True
-                break
+#         is_dislike = False
+#         for dislike in post.dislikes.all():  # ✅ Fix here (post.dislike → post.dislikes)
+#             if dislike == request.user:
+#                 is_dislike = True
+#                 break
 
-        if not is_dislike:
-            post.dislikes.add(request.user)  # ✅ Fix here too
+#         if not is_dislike:
+#             post.dislikes.add(request.user)  # ✅ Fix here too
 
-        if is_dislike:
-            post.dislikes.remove(request.user)  # ✅ Fix here too
+#         if is_dislike:
+#             post.dislikes.remove(request.user)  # ✅ Fix here too
 
-        next_url = request.POST.get('next', '/')
-        return HttpResponseRedirect(next_url)
+#         next_url = request.POST.get('next', '/')
+#         return HttpResponseRedirect(next_url)

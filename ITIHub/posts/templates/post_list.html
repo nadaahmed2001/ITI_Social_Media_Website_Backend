@@ -1,16 +1,17 @@
 {% block content %}
 <div class="container">
     <h1 class="text-center">Test</h1>
+    <h1>Ana feeeeeeeeeeeeeeen</h1>
     <div class="post-form">
         <h5>Add a Post</h5>
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            {{ post_form.as_p }}
-            {{ attachment_form.as_p }}  <!-- Include attachment fields -->
+            {{ post_form.as_p }}  <!-- Use post_form here -->
+            {{ attachment_form.as_p }} 
             <button type="submit" name="post_submit" class="submit-btn">Submit</button>
         </form>
     </div>
-    
+
     <!-- Post List -->
     <div class="posts">
         <h3>Recent Posts</h3>
@@ -31,27 +32,30 @@
             {% endif %}
         {% endfor %}
             <h4><a href="{% url 'post-detail' post.pk %}" class="author">By {{ post.author }}</a></h4>
-            <form method="POST" action="{% url 'like' post.pk%}">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.path }}">
-                <button type="submit">
-                <span>{{ post.likes.all.count }}</span>
-                like
-                </button>
-            </form> 
-            <form method="POST" action="{% url 'dislike' post.pk%}">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.path }}">
-                <button type="submit">
-                    <span>{{ post.dislikes.all.count }}</span>
-                dislike
-                </button>
-            </form>
-            <p class="date"><small>on {{ post.created_on }}</small></p>
+           
+            <!-- Reaction Form -->
+                 <form method="POST" action="{% url 'add-reaction' post.pk 'Like' %}">
+            {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}" />
+                     <select name="reaction_type" 
+                            onchange="this.form.action=`{% url 'add-reaction' post.pk 'Like' %}`.replace('Like', this.value); this.form.submit();">
+                                    <option value="">React</option>
+                                    <option value="Like">👍 Like ({{ post.reaction_counts.Like }})</option>
+                                    <option value="Heart">❤️ Heart ({{ post.reaction_counts.Heart }})</option>
+                                    <option value="Celebrate">🎉 Celebrate ({{ post.reaction_counts.Celebrate }})</option>
+                                    <option value="Laugh">😂 Laugh ({{ post.reaction_counts.Laugh }})</option>
+                                    <option value="Insightful">💡 Insightful ({{ post.reaction_counts.Insightful }})</option>
+                                    <option value="Support">🤝 Support ({{ post.reaction_counts.Support }})</option>
+                        </select> 
+                        <a href="{% url 'view-reactions' post.id %}" class="btn btn-info">View Reactions</a>
+
+                       <p class="date"><small>on {{ post.created_on }}</small></p>
+                    </form>
+                    
             <p>{{post.attachment}}</p>
             <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
             <a href="{% url 'post_delete' post.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
-
+                    
             <!-- Comment Section -->
             <div class="comments">
                 <h5>Comments:</h5>
@@ -64,12 +68,32 @@
                                     <span class="comment-date">{{ comment.created_on|date:"F d, Y H:i" }}</span>
                                 </div>
                                 <p class="comment-text">{{ comment.comment }}</p>
-
+                                        {% comment %} start {% endcomment %}
+                                        {% for comment in post.comments.all %}
+                                        <!-- ... existing comment elements ... -->
+                                        <form method="POST" action="{% url 'add-comment-reaction' comment.id 'Like' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.path }}">
+                                            <select name="reaction_type" 
+                                                    onchange="this.form.action=`{% url 'add-comment-reaction' comment.id 'Like' %}`.replace('Like', this.value); this.form.submit();">
+                                                <option value="">React</option>
+                                                <option value="Like">👍 Like ({{ comment.reaction_counts.Like }})</option>
+                                                <option value="Heart">❤️ Heart ({{ comment.reaction_counts.Heart }})</option>
+                                                <option value="Celebrate">🎉 Celebrate ({{ comment.reaction_counts.Celebrate }})</option>
+                                                <option value="Laugh">😂 Laugh ({{ comment.reaction_counts.Laugh }})</option>
+                                                <option value="Insightful">💡 Insightful ({{ comment.reaction_counts.Insightful }})</option>
+                                                <option value="Support">🤝 Support ({{ comment.reaction_counts.Support }})</option>
+                                            </select>
+                                            <a href="{% url 'view-comment-reactions' comment.id %}" class="btn btn-info">View Reactions</a>
+                                        </form>
+                                        <div class="comment-actions">
+                                            <a href="{% url 'comment_edit' comment.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                            <a href="{% url 'comment_delete' comment.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                        </div>
+                                    {% endfor %}
+                                        {% comment %} end {% endcomment %}
                                 <!-- Edit/Delete buttons -->
-                                <div class="comment-actions">
-                                    <a href="{% url 'comment_edit' comment.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                    <a href="{% url 'comment_delete' comment.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
-                                </div>
+                            
                             </li>
                         {% endfor %}
                     </ul>
@@ -77,25 +101,19 @@
                     <p class="no-comments">No comments yet. Be the first to comment!</p>
                 {% endif %}
             </div>
-
-                <div class="comment-form">
-                    <h5>Add a Comment</h5>
-                    <form method="POST" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <input type="hidden" name="post_id" value="{{ post.id }}">
-                        {{ comment_form.as_p }}  <!-- Use comment_form here -->
-                        {{ attachment_form.as_p }} 
-                        <button type="submit" name="comment_submit" class="submit-btn">Comment</button>
-                    </form>
-                </div>
-                
+            <h5>Add a Comment</h5>
+            <form method="POST" enctype="multipart/form-data">  <!-- Add enctype -->
+                {% csrf_token %}
+                <input type="hidden" name="post_id" value="{{ post.id }}">  
+                {{ comment_form.as_p }}
+                {{ attachment_form.as_p }} 
+                <button type="submit" name="comment_submit" class="submit-btn">Comment</button>
+            </form>
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
-
-
 <!-- Styles -->
 <style>
     body {
@@ -227,3 +245,4 @@
     }
 </style>
 {% endblock content %}
+
