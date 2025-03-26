@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
+import uuid
 
 class User(AbstractUser):
     """
@@ -7,7 +8,7 @@ class User(AbstractUser):
     - Role-based flags (`is_student`, `is_supervisor`) for easy permission checks.
     """
     phone = models.CharField(max_length=15, unique=True, null=True, blank=True)
-    profile_picture = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
+    profile_picture = models.ImageField(upload_to="profile_pics/", blank=True, null=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Role-based flags
@@ -26,6 +27,46 @@ class User(AbstractUser):
     def __str__(self):
         role = "Supervisor" if self.is_supervisor else "Student" if self.is_student else "User"
         return f"{self.username} ({role})"
+
+
+
+class Profile(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)                 # One-to-one relationship between User and profile
+    username = models.CharField(max_length=200, blank=True, null=True)
+    first_name = models.CharField(max_length=200, blank=True, null=True)
+    last_name = models.CharField(max_length=200, blank=True, null=True) 
+    email = models.EmailField(max_length=200, unique=True, blank=True, null=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+    headline = models.CharField(max_length=200, blank=True, null=True)
+    bio = models.TextField(blank=True, null=True)
+    profile_image = models.ImageField(default='profiles/user-default.png', upload_to="profile_pics/", blank=True, null=True)   # import the default image  static -> images -> profiles -> user-default.png
+    website_url = models.CharField(max_length=200, blank=True, null=True)  # portfolio_website
+    twitter_url = models.CharField(max_length=200, blank=True, null=True)
+    youtube_url = models.CharField(max_length=200, blank=True, null=True)
+    github_url = models.CharField(max_length=200, blank=True, null=True)
+    stackoverflow_url = models.CharField(max_length=200, blank=True, null=True)
+    linkedin_url = models.CharField(max_length=100, blank=True, null=True)
+    leetcode_username = models.CharField(max_length=100, blank=True, null=True)
+    hackerrank_username = models.CharField(max_length=200, blank=True, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return str(self.user.username)
+    
+    
+class Skill(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(Profile, on_delete=models.CASCADE, blank=True, null=True)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
+    
+    
+    def __str__(self):
+        return str(self.name)
 
 
 

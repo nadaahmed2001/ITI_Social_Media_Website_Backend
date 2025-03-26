@@ -1,8 +1,12 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from chat.models import GroupChat
 from batches.models import Batch, StudentBatch
+from .models import Profile
+
+#from django.contrib.auth.models import User ---> instead we will import the custom user model
+from .models import User
 
 User = get_user_model()
 
@@ -35,3 +39,40 @@ def add_user_to_batch_chat(sender, instance, **kwargs):
                 if group_chat:
                     group_chat.members.add(instance)  # Add student to the group chat
                     group_chat.save()  # Save the group chat
+
+# =====================================================================================================================
+
+# Create a profile when a new user is created
+def createProfile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.get_or_create(  # Ensures no duplicate profile is created
+            user=instance,
+            defaults={
+                # this will copy the common data(attributes) from the user model to the profile model
+                'username': instance.username,
+                'email': instance.email,
+                'first_name': instance.first_name,
+                'last_name': instance.last_name,
+            }
+        )
+
+# Update the user when the profile is updated
+def updateProfile(sender, instance, created, **kwargs):
+    if not created:  # Prevent updates during profile creation
+        user = instance.user
+        user.first_name = instance.first_name
+        user.last_name = instance.last_name
+        user.username = instance.username
+        user.email = instance.email
+        user.save()
+
+# Delete the user when their profile is deleted
+def deleteProfile(sender, instance, **kwargs):
+    user = instance.user
+    if user:  # Avoid deleting the user twice
+        user.delete()
+
+# Connect signals
+post_save.connect(createProfile, sender=User)
+post_save.connect(updateProfile, sender=Profile)
+post_delete.connect(deleteProfile, sender=Profile)
