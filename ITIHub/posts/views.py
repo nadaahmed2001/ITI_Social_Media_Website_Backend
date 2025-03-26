@@ -8,6 +8,8 @@ from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
 from users.permissions import IsStudentOrSupervisor
+from notifications.models import Notification
+from django.contrib.contenttypes.models import ContentType
 
 #  List & Create Posts
 class PostListCreateView(generics.ListCreateAPIView):
@@ -42,16 +44,39 @@ class PostLikeDislikeView(APIView):
 
     def post(self, request, pk, action):
         post = get_object_or_404(Post, pk=pk)
+
         if action == "like":
             post.toggle_like(request.user)
+            if post.author != request.user:  
+                Notification.objects.create(
+                    recipient=post.author,
+                    sender=request.user,
+                    notification_type="reaction",
+                    reaction_type="like", 
+                    related_content_type=ContentType.objects.get_for_model(post),
+                    related_object_id=post.id
+                )
+
         elif action == "dislike":
             post.toggle_dislike(request.user)
+            if post.author != request.user:
+                Notification.objects.create(
+                    recipient=post.author,
+                    sender=request.user,
+                    notification_type="reaction",
+                    reaction_type="dislike",
+                    related_content_type=ContentType.objects.get_for_model(post),
+                    related_object_id=post.id
+                )
+
         else:
-            return Response({"error": "Invalid action"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
-#  Add Comment
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
