@@ -16,6 +16,9 @@ class Post(models.Model):
     def __str__(self):
         return f"Post by {self.author} on {self.created_on}"
 
+    def reaction_counts(self):
+        return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
+
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
@@ -25,6 +28,9 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.author} on {self.post}"
+
+    def reaction_counts(self):
+        return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
 
 class Reaction(models.Model):
     REACTIONS = [

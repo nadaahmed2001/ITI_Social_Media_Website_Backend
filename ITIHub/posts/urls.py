@@ -8,11 +8,11 @@ urlpatterns = [
     path('<int:post_id>/comment/', CommentCreateView.as_view(), name='comment-create'),  # Use post_id
     path('comment/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
 
-
+ path('<int:post_id>/react/remove/', RemoveReaction.as_view(), name='post-remove-reaction'),
+    path('comment/<int:comment_id>/react/remove/', RemoveReaction.as_view(), name='comment-remove-reaction'),
     path('<int:post_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='post-react'),
     path('comment/<int:comment_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='comment-react'),
 
 
-    path('<int:post_id>/react/remove/', RemoveReaction.as_view(), name='post-remove-reaction'),
-    path('comment/<int:comment_id>/react/remove/', RemoveReaction.as_view(), name='comment-remove-reaction'),
+   
 ]

@@ -1,13 +1,11 @@
-# views.py
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .models import Post
-from .serializers import PostSerializer, CommentSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
+from .serializers import PostSerializer, CommentSerializer
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
@@ -15,18 +13,14 @@ class PostListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = Post.objects.all().order_by('-created_on')
-        author_id = self.request.query_params.get('author')  # Get author ID from query params
-        
-        if author_id:  # If an author ID is provided, filter posts by that author
+        author_id = self.request.query_params.get('author')
+        if author_id:
             queryset = queryset.filter(author_id=author_id)
-        
         return queryset
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-
-#  Retrieve, Update, Delete a Post
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
@@ -44,7 +38,6 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({"error": "You are not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
-#  Add Comment
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -53,7 +46,6 @@ class CommentCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
-#  Edit & Delete Comment
 class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -71,7 +63,6 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({"error": "You are not authorized to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
-#  Add or Remove Reaction
 class AddReaction(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -87,20 +78,28 @@ class AddReaction(APIView):
             return Response({"error": "Invalid target"}, status=status.HTTP_400_BAD_REQUEST)
 
         Reaction.objects.filter(user=request.user, post=post_id, comment=comment_id).delete()
-        Reaction.objects.create(user=request.user, post=target if isinstance(target, Post) else None, comment=target if isinstance(target, Comment) else None, reaction_type=reaction_type)
+        Reaction.objects.create(
+            user=request.user, 
+            post=target if isinstance(target, Post) else None, 
+            comment=target if isinstance(target, Comment) else None, 
+            reaction_type=reaction_type
+        )
 
         return Response({"message": "Reaction added successfully"}, status=status.HTTP_201_CREATED)
 
+#   RemoveReaction API
 class RemoveReaction(APIView):
     permission_classes = [IsAuthenticated]
-    http_method_names = ["DELETE"]  # Restrict to DELETE only
 
-    def delete(self, request, post_id=None, comment_id=None):
-        reaction = Reaction.objects.filter(user=request.user, post_id=post_id, comment_id=comment_id)
-        if reaction.exists():
-            reaction.delete()
-            return Response({"message": "Reaction removed"}, status=status.HTTP_200_OK)
-        return Response({"error": "Reaction not found"}, status=status.HTTP_404_NOT_FOUND)
+    def post(self, request, post_id=None, comment_id=None):
+        """Removes a reaction from a post or comment"""
+        if post_id:
+            target = get_object_or_404(Post, id=post_id)
+            Reaction.objects.filter(user=request.user, post=target).delete()
+        elif comment_id:
+            target = get_object_or_404(Comment, id=comment_id)
+            Reaction.objects.filter(user=request.user, comment=target).delete()
+        else:
+            return Response({"error": "Invalid target"}, status=status.HTTP_400_BAD_REQUEST)
 
-
-
+        return Response({"success": True}, status=status.HTTP_200_OK)
