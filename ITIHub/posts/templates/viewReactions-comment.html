@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 class="text-center">Reactions for "{{ post.title }}"</h1>
+    <h1 class="text-center">Reactions for Comment</h1>
     
     {% if reactions %}
         <table class="table">
@@ -11,6 +11,7 @@
                     <th>User</th>
                     <th>Reaction</th>
                     <th>Date</th>
+                    <th>Action</th> <!-- Remove Button -->
                 </tr>
             </thead>
             <tbody>
@@ -18,7 +19,9 @@
                 <tr>
                     <td>{{ reaction.user.username }}</td>
                     <td>{{ reaction.reaction_type }}</td>
-                    <td>{{ reaction.created_at|date:"F d, Y H:i" }}</td>
+                    <td>{{ reaction.timestamp|date:"F d, Y H:i" }}</td>
+                    <td>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -30,3 +33,46 @@
     <a href="{% url 'post-list' %}" class="btn btn-secondary">Back to Posts</a>
 </div>
 {% endblock %}
+
+
+{% comment %} {% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Reactions for "{{ post.title }}"</h1>
+    
+    {% if reactions %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Reaction</th>
+                    <th>Date</th>
+                    <th>Action</th>  <!-- Add Remove Action -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for reaction in reactions %}
+                <tr>
+                    <td>{{ reaction.user.username }}</td>
+                    <td>{{ reaction.reaction_type }}</td>
+                    <td>{{ reaction.timestamp|date:"F d, Y H:i" }}</td>  <!-- Fixed timestamp field -->
+                    <td>
+                        {% if reaction.user == request.user %}
+                        <form method="POST" action="{% url 'remove-reaction' post.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-center">No reactions yet.</p>
+    {% endif %}
+
+    <a href="{% url 'post-list' %}" class="btn btn-secondary">Back to Posts</a>
+</div>
+{% endblock %} {% endcomment %}

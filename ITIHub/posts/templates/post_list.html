@@ -6,8 +6,11 @@
         <h5>Add a Post</h5>
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
-            {{ post_form.as_p }}  <!-- Use post_form here -->
-            {{ attachment_form.as_p }} 
+            {{ post_form.as_p }}  
+            {% comment %} {{ attachment_form.as_p }}  {% endcomment %}
+            {% comment %} start {% endcomment %}
+            <input type="file" name="image" accept="image/*">
+            {% comment %} end {% endcomment %}
             <button type="submit" name="post_submit" class="submit-btn">Submit</button>
         </form>
     </div>
@@ -34,7 +37,31 @@
             <h4><a href="{% url 'post-detail' post.pk %}" class="author">By {{ post.author }}</a></h4>
            
             <!-- Reaction Form -->
-                 <form method="POST" action="{% url 'add-reaction' post.pk 'Like' %}">
+            <form method="POST" action="{% url 'add-reaction' post.pk 'Like' %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}" />
+                <select name="reaction_type" 
+                        onchange="this.form.action=`{% url 'add-reaction' post.pk 'Like' %}`.replace('Like', this.value); this.form.submit();">
+                    <option value="">React</option>
+                    <option value="Like">👍 Like ({{ post.reaction_counts.Like }})</option>
+                    <option value="Heart">❤️ Heart ({{ post.reaction_counts.Heart }})</option>
+                    <option value="Celebrate">🎉 Celebrate ({{ post.reaction_counts.Celebrate }})</option>
+                    <option value="Laugh">😂 Laugh ({{ post.reaction_counts.Laugh }})</option>
+                    <option value="Insightful">💡 Insightful ({{ post.reaction_counts.Insightful }})</option>
+                    <option value="Support">🤝 Support ({{ post.reaction_counts.Support }})</option>
+                </select> 
+            </form>
+            
+            <!-- Add Remove Reaction Button -->
+            <form method="POST" action="{% url 'remove-reaction' post.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Remove Reaction</button>
+            </form>
+            
+            <a href="{% url 'view-reactions' post.id %}" class="btn btn-info">View Reactions</a>
+            <p class="date"><small>on {{ post.created_on }}</small></p>
+            
+                 {% comment %} <form method="POST" action="{% url 'add-reaction' post.pk 'Like' %}">
             {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.path }}" />
                      <select name="reaction_type" 
@@ -50,7 +77,7 @@
                         <a href="{% url 'view-reactions' post.id %}" class="btn btn-info">View Reactions</a>
 
                        <p class="date"><small>on {{ post.created_on }}</small></p>
-                    </form>
+                    </form> {% endcomment %}
                     
             <p>{{post.attachment}}</p>
             <a href="{% url 'post_edit' post.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
@@ -84,8 +111,31 @@
                                                 <option value="Insightful">💡 Insightful ({{ comment.reaction_counts.Insightful }})</option>
                                                 <option value="Support">🤝 Support ({{ comment.reaction_counts.Support }})</option>
                                             </select>
-                                            <a href="{% url 'view-comment-reactions' comment.id %}" class="btn btn-info">View Reactions</a>
                                         </form>
+                                        
+                                        <!-- Add Remove Reaction Button -->
+                                        <form method="POST" action="{% url 'remove-comment-reaction' comment.id %}" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger">Remove Reaction</button>
+                                        </form>
+                                        
+                                        <a href="{% url 'view-comment-reactions' comment.id %}" class="btn btn-info">View Reactions</a>
+                                        
+                                        {% comment %} <form method="POST" action="{% url 'add-comment-reaction' comment.id 'Like' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{{ request.path }}">
+                                            <select name="reaction_type" 
+                                                    onchange="this.form.action=`{% url 'add-comment-reaction' comment.id 'Like' %}`.replace('Like', this.value); this.form.submit();">
+                                                <option value="">React</option>
+                                                <option value="Like">👍 Like ({{ comment.reaction_counts.Like }})</option>
+                                                <option value="Heart">❤️ Heart ({{ comment.reaction_counts.Heart }})</option>
+                                                <option value="Celebrate">🎉 Celebrate ({{ comment.reaction_counts.Celebrate }})</option>
+                                                <option value="Laugh">😂 Laugh ({{ comment.reaction_counts.Laugh }})</option>
+                                                <option value="Insightful">💡 Insightful ({{ comment.reaction_counts.Insightful }})</option>
+                                                <option value="Support">🤝 Support ({{ comment.reaction_counts.Support }})</option>
+                                            </select>
+                                            <a href="{% url 'view-comment-reactions' comment.id %}" class="btn btn-info">View Reactions</a>
+                                        </form> {% endcomment %}
                                         <div class="comment-actions">
                                             <a href="{% url 'comment_edit' comment.pk %}" class="btn btn-sm btn-outline-secondary">Edit</a>
                                             <a href="{% url 'comment_delete' comment.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>

@@ -10,7 +10,6 @@ class Attachment(models.Model):
     video = models.FileField(upload_to="attachments/", null=True, blank=True)
     uploaded_on = models.DateTimeField( default=timezone.now) 
 
-
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     body = models.TextField()
