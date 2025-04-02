@@ -74,7 +74,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             return reverse("batch-detail", kwargs={"batch_id": related_object.id})
 
         elif obj.notification_type in ["reaction", "comment"] and related_object:
-            return reverse("post-detail", kwargs={"pk": related_object.id})
+            return reverse("post-detail", kwargs={"post_id": related_object.id})
 
         elif obj.notification_type == "follow":
             return reverse("user-profile", kwargs={"username": obj.sender.username})

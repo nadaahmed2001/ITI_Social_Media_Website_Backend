@@ -1,8 +1,8 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Notification
 from chat.models import ChatMessage, GroupMessage
-from posts.models import Post, Comment
+from posts.models import Post, Comment, Reaction
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 import re
@@ -21,7 +21,6 @@ def notify_private_message(sender, instance, created, **kwargs):
                 related_object_id=instance.id
             )
         ])
-
 
 @receiver(post_save, sender=GroupMessage)
 def notify_group_message(sender, instance, created, **kwargs):
@@ -95,14 +94,34 @@ def notify_mentioned_users(sender, instance, created, **kwargs):
         Notification.objects.bulk_create(notifications)
 
 
-# @receiver(post_save, sender=Reaction)  # Reaction model should be defined in posts/models.py
-# def notify_reaction(sender, instance, created, **kwargs):
-#     if created and instance.post.author != instance.user:
-#         Notification.objects.create(
-#             recipient=instance.post.author,
-#             sender=instance.user,
-#             notification_type="reaction",
-#             content_type=ContentType.objects.get_for_model(instance),
-#             object_id=instance.id
-#         )
 
+
+@receiver(post_save, sender=Reaction)
+def notify_reaction(sender, instance, created, **kwargs):
+    if created:
+        if instance.post and instance.post.author != instance.user:
+            Notification.objects.create(
+                recipient=instance.post.author,
+                sender=instance.user,
+                notification_type="reaction",
+                reaction_type=instance.reaction_type,
+                related_content_type=ContentType.objects.get_for_model(instance),
+                related_object_id=instance.id
+            )
+        elif instance.comment and instance.comment.author != instance.user:
+            Notification.objects.create(
+                recipient=instance.comment.author,
+                sender=instance.user,
+                notification_type="reaction",
+                reaction_type=instance.reaction_type,
+                related_content_type=ContentType.objects.get_for_model(instance),
+                related_object_id=instance.id
+            )
+
+@receiver(post_delete, sender=Reaction)
+def remove_reaction_notification(sender, instance, **kwargs):
+    Notification.objects.filter(
+    sender=instance.user,
+    related_object_id=instance.id,
+    related_content_type=ContentType.objects.get_for_model(instance)
+    ).delete()

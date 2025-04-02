@@ -1,113 +1,55 @@
 from django.db import models
 from django.utils import timezone
 from users.models import User
-from batches.models import Department
-from django.db import models
-from django.utils import timezone
 
 class Attachment(models.Model):
     image = models.ImageField(upload_to="attachments/", null=True, blank=True)
     video = models.FileField(upload_to="attachments/", null=True, blank=True)
-    uploaded_on = models.DateTimeField( default=timezone.now) 
+    uploaded_on = models.DateTimeField(default=timezone.now)
 
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     body = models.TextField()
     created_on = models.DateTimeField(default=timezone.now)
-    likes = models.ManyToManyField(User, blank=True, related_name='liked_posts')
-    dislikes = models.ManyToManyField(User, blank=True, related_name='disliked_posts')
     attachments = models.ManyToManyField(Attachment, blank=True)
 
-    def toggle_like(self, user):
-        if self.dislikes.filter(id=user.id).exists():
-            self.dislikes.remove(user)  # Remove from dislikes if already disliked
-        if self.likes.filter(id=user.id).exists():
-            self.likes.remove(user)
-        else:
-            self.likes.add(user)
+    def __str__(self):
+        return f"Post by {self.author} on {self.created_on}"
 
-    def toggle_dislike(self, user):
-        if self.likes.filter(id=user.id).exists():
-            self.likes.remove(user)  # Remove from likes if already liked
-        if self.dislikes.filter(id=user.id).exists():
-            self.dislikes.remove(user)
-        else:
-            self.dislikes.add(user)
-
-#start
-# class Post(models.Model):
-#     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-#     body = models.TextField()
-#     created_on = models.DateTimeField(default=timezone.now)
-#     attachments = models.ManyToManyField(Attachment, blank=True)
-
-#     def __str__(self):
-#         return f"Post {self.id} by {self.author}"
-#end
+    def reaction_counts(self):
+        return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
 
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     comment = models.TextField()
     created_on = models.DateTimeField(auto_now_add=True)
-    attachments = models.ManyToManyField(Attachment, blank=True)  # Allow multiple attachments
-#start
-# class Reaction(models.Model):
-#     REACTIONS_TYPES = [
-#         ('Like', 'Like'),
-#         ('Heart', 'Heart'),
-#         ('Clap', 'Clap'),
-#         ('Laugh', 'Laugh'),
-#         ('Support', 'Support'),
-#     ]
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)
-#     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='reactions')
-#     reaction_type = models.CharField(max_length=10, choices=REACTIONS_TYPES)
-#     timestamp = models.DateTimeField(auto_now_add=True)
+    attachments = models.ManyToManyField(Attachment, blank=True)
 
-#     class Meta:
-#         unique_together = ('user', 'post')  # Ensures one reaction per user per post
+    def __str__(self):
+        return f"Comment by {self.author} on {self.post}"
 
-#     def __str__(self):
-        # return f"{self.user} reacted {self.reaction_type} on {self.post.id}"
-#end
-# Create your models here.
-# class Post(models.Model):
-#     attachment = models.ForeignKey('Attachment', on_delete=models.SET_NULL, null=True, blank=True)
-#     created_on = models.DateTimeField(default=timezone.now) 
-#     body = models.TextField()
-#     author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-#     likes = models.ManyToManyField(User,blank=True,related_name='likes')
-#     dislike = models.ManyToManyField(User,blank=True,related_name='dislikes')
+    def reaction_counts(self):
+        return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
 
-# class Comment(models.Model):
-#     attachment = models.ForeignKey('Attachment', on_delete=models.SET_NULL, null=True, blank=True)
-#     author = models.ForeignKey(User, on_delete=models.CASCADE , null=True, blank=True)
-#     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-#     comment = models.TextField()
-#     created_on = models.DateTimeField(auto_now_add=True) 
+class Reaction(models.Model):
+    REACTIONS = [
+        ("like", "Like"),
+        ("love", "Love"),
+        ("haha", "Haha"),
+        ("wow", "Wow"),
+        ("sad", "Sad"),
+        ("angry", "Angry"),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True)
+    reaction_type = models.CharField(max_length=10, choices=REACTIONS)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
-# class Reaction(models.Model):
-    # REACTIONS_TYPES = [
-    #     ('Like', 'Like'),
-    #     ('Heart', 'Heart'),
-    #     ('Clap', 'Clap'),
-    #     ('Laugh', 'Laugh'),
-    #     ('Support', 'Support'),
-    # ]
+    class Meta:
+        unique_together = ('user', 'post', 'comment')
 
-    # user = models.ForeignKey(User, on_delete=models.CASCADE)
-    # post = models.ForeignKey(Post, on_delete=models.CASCADE , related_name='reactions')
-    # reaction_type = models.CharField(max_length=10, choices=REACTIONS_TYPES)
-    # timestamp = models.DateTimeField(auto_now_add=True)
-
-    # class Meta:
-    #     unique_together = ('user', 'post')  
-
-    # def __str__(self):
-    #     return f"{self.user} reacted {self.reaction_type} on {self.post.id}"
-    
-
-# class Attachment(models.Model):
-#     image = models.ImageField(upload_to="attachments/", null=True, blank=True)
-#     video = models.FileField(upload_to="attachments/", null=True, blank=True)
+    def __str__(self):
+        target = self.post if self.post else self.comment
+        return f"{self.user} reacted {self.reaction_type} on {target}"

@@ -1,13 +1,13 @@
 from django.contrib.auth import authenticate
-from django.contrib.auth import login, logout
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from rest_framework.authtoken.models import Token
-from .models import User
-from .serializers import UserSerializer, RegisterStudentSerializer, LoginSerializer
+from .models import Profile, Skill
+from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from .serializers import UserSerializer, RegisterStudentSerializer, LoginSerializer, ProfileSerializer, SkillSerializer
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 
 class RegisterStudentView(APIView):
@@ -94,3 +94,152 @@ class UserProfileView(APIView):
             "username": user.username,
             "email": user.email
         })
+
+
+# ===============================================================================================================================================
+# ======================================================= Profile & Skills Views ================================================================
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    """
+    Custom permission to allow owners of the profile to edit it, while others can only view it.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Check if the user is the owner of the profile or is making a read-only request
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.user == request.user
+
+class UserAccountAPI(APIView):
+    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    def get(self, request):
+        # Get the logged-in user's profile
+        profile = request.user.profile
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        # Get the logged-in user's profile
+        profile = request.user.profile
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ==============================================================================================================================================
+class AllProfilesAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        """
+        Get all profiles and their associated skills.
+        """
+        profiles = Profile.objects.all()  # Retrieve all profiles
+        all_profiles_data = []
+
+        # Loop through each profile and serialize the data
+        for profile in profiles:
+            profile_data = ProfileSerializer(profile).data  # Serialize individual profile
+            
+            # Fetching skills for each profile
+            main_skills = profile.skill_set.exclude(description__exact="")  # Main skills with description
+            other_skills = profile.skill_set.filter(description="")  # Skills without description
+            
+            # Add skills to the profile data
+            profile_data["main_skills"] = SkillSerializer(main_skills, many=True).data
+            profile_data["other_skills"] = SkillSerializer(other_skills, many=True).data
+            
+            # Add the profile data to the list
+            all_profiles_data.append(profile_data)
+
+        return Response(all_profiles_data, status=status.HTTP_200_OK)
+
+class UserProfileAPI(APIView):
+    def get(self, request, id):
+        """
+        Get a specific profile and its associated skills.
+        """
+        profile = get_object_or_404(Profile, id=id)  # Retrieve the specific profile by ID
+        
+        # Categorizing skills
+        main_skills = profile.skill_set.exclude(description__exact="")
+        other_skills = profile.skill_set.filter(description="")
+        
+        # Serializing the profile data
+        profile_data = ProfileSerializer(profile).data
+        profile_data["main_skills"] = SkillSerializer(main_skills, many=True).data
+        profile_data["other_skills"] = SkillSerializer(other_skills, many=True).data
+
+        return Response(profile_data, status=status.HTTP_200_OK)
+
+# ===============================================================================================================================================
+class SkillAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    # Disable CSRF for the entire class-based view
+    @csrf_exempt
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def get(self, request, pk=None):
+        profile = request.user.profile
+        
+        if pk:
+            # Retrieve a specific skill by pk
+            skill = get_object_or_404(Skill, pk=pk, owner=profile)
+            serializer = SkillSerializer(skill)
+            return Response(serializer.data)
+        
+        # Retrieve all skills for the logged-in user's profile
+        skills = Skill.objects.filter(owner=profile)
+        serializer = SkillSerializer(skills, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        # Check if the skill name already exists
+        skill_name = request.data.get('name').strip()
+        # Case-insensitive check for existing skill name
+        if Skill.objects.filter(name__iexact=skill_name).exists():
+            return Response({"detail": "A skill with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Add a new skill to the logged-in user's profile
+        profile = request.user.profile
+        
+        # Deserialize the data to create a new skill
+        serializer = SkillSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            # Associate the skill with the logged-in user's profile
+            serializer.save(owner=profile)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+    def put(self, request, pk):
+        # Get the skill object that belongs to the logged-in user's profile
+        profile = request.user.profile
+        skill = get_object_or_404(Skill, pk=pk, owner=profile)
+        
+        # Get the new skill name from the request data
+        skill_name = request.data.get('name').strip()
+
+        # Check if another skill with the same name (case-insensitive) already exists (excluding the current skill)
+        if Skill.objects.filter(name__iexact=skill_name).exclude(pk=pk).exists():
+            return Response({"detail": "A skill with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Deserialize the data to update the skill
+        serializer = SkillSerializer(skill, data=request.data, partial=True)  # Partial update
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        # Get the skill object that belongs to the logged-in user's profile
+        profile = request.user.profile
+        skill = get_object_or_404(Skill, pk=pk, owner=profile)
+        
+        # Delete the skill
+        skill.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

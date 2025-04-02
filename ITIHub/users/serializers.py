@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User
 from batches.models import StudentBatch
+from users.models import Profile, Skill
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,3 +23,18 @@ class RegisterStudentSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = "__all__"
+
+
+
+class SkillSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Skill
+        fields = '__all__'
+        
