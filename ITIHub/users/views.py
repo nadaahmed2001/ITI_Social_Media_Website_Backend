@@ -50,6 +50,7 @@ class RegisterStudentView(APIView):
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
 
+    @csrf_exempt
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():

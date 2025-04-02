@@ -25,16 +25,35 @@ class IsProjectOwnerOrReadOnly(BasePermission):
 class ProjectAPI(APIView):
     permission_classes = [IsAuthenticated]
 
+    # def get(self, request, pk=None):
+    #     if pk:
+    #         # Retrieve a specific project
+    #         project = get_object_or_404(Project, pk=pk)
+    #         serializer = ProjectSerializer(project)
+    #         return Response(serializer.data)
+    #     else:
+    #         # List all projects
+    #         projects = Project.objects.all()
+    #         serializer = ProjectSerializer(projects, many=True)
+    #         return Response(serializer.data)
     def get(self, request, pk=None):
         if pk:
-            # Retrieve a specific project
+            # Retrieve a specific project (remains the same)
             project = get_object_or_404(Project, pk=pk)
-            serializer = ProjectSerializer(project)
+            # Optional: Add permission check if needed even for GET specific
+            # self.check_object_permissions(request, project)
+            serializer = ProjectSerializer(project, context={'request': request}) # Pass context if serializer needs it
             return Response(serializer.data)
         else:
-            # List all projects
-            projects = Project.objects.all()
-            serializer = ProjectSerializer(projects, many=True)
+            # List projects, potentially filtered
+            queryset = Project.objects.all()
+            owner_id = request.query_params.get('owner', None) # Check for 'owner' query parameter
+            if owner_id:
+                # Filter by owner if the parameter is provided
+                queryset = queryset.filter(owner__id=owner_id)
+            # Optional: Add more filters here if needed (e.g., by tag)
+
+            serializer = ProjectSerializer(queryset, many=True, context={'request': request}) # Pass context
             return Response(serializer.data)
 
     def post(self, request):
