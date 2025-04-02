@@ -6,6 +6,8 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
 from .serializers import PostSerializer, CommentSerializer
+from rest_framework.generics import ListCreateAPIView
+from .models import Comment
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
@@ -62,7 +64,14 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
         if comment.author != request.user:
             return Response({"error": "You are not authorized to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+    
+class CommentListCreateView(ListCreateAPIView):
+    serializer_class = CommentSerializer
 
+    def get_queryset(self):
+        post_id = self.kwargs['post_id']
+        return Comment.objects.filter(post_id=post_id)
+    
 class AddReaction(APIView):
     permission_classes = [IsAuthenticated]
 
