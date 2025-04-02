@@ -43,7 +43,7 @@ SECRET_KEY = "django-insecure-erj+_g2fu16q8xfak*u1@+%$0^g(@r_u&s64qj*spv&+b3xi-4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 # Application definition
 INSTALLED_APPS = [
@@ -61,11 +61,10 @@ INSTALLED_APPS = [
     "chat",
     "projects",
     'django_extensions',
+    'corsheaders',
     "rest_framework", 
     "rest_framework.authtoken",
     'rest_framework_simplejwt',
-    'corsheaders',
-
 ]
 
 REST_FRAMEWORK = {
@@ -78,19 +77,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',  # Only authenticated users can access
     ],
 }
-
-
-#start
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework.authentication.SessionAuthentication',
-#         'rest_framework.authentication.TokenAuthentication',
-#     ),
-#     'DEFAULT_PERMISSION_CLASSES': (
-#         'rest_framework.permissions.IsAuthenticated',
-#     ),
-# }
-#end
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
@@ -131,8 +117,22 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # React frontend
+    "http://127.0.0.1:5173",
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-csrftoken',
+    'x-requested-with',
+    'accept',
+    'withcredentials'
+]
+CORS_ALLOW_ALL_ORIGINS = True
 
-MIDDLEWARE = [
+MIDDLEWARE = [ 
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

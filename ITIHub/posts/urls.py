@@ -12,7 +12,4 @@ urlpatterns = [
     path('comment/<int:comment_id>/react/remove/', RemoveReaction.as_view(), name='comment-remove-reaction'),
     path('<int:post_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='post-react'),
     path('comment/<int:comment_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='comment-react'),
-
-
-   
 ]
