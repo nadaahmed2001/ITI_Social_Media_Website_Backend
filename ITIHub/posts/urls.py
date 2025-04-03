@@ -1,7 +1,7 @@
 
 from django.urls import path
 from .views import (PostListCreateView, PostDetailView, CommentCreateView,
-                    CommentDetailView, AddReaction, RemoveReaction , ListCommentsView , PostReactionsView)
+                    CommentDetailView, AddReaction, RemoveReaction , ListCommentsView , PostReactionsView , CommentEditView, CommentDeleteView)
 
 urlpatterns = [
     path('', PostListCreateView.as_view(), name='post-list-create'),
@@ -14,6 +14,8 @@ urlpatterns = [
     path('<int:post_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='post-react'),
     path('comment/<int:comment_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='comment-react'),
     path('<int:post_id>/reactions/', PostReactionsView.as_view(), name='post-reactions'),
+    path('comment/edit/<int:pk>/', CommentEditView.as_view(), name='comment_edit'),
+    path('comment/delete/<int:pk>/', CommentDeleteView.as_view(), name='comment_delete'),
 ]
 
 # from django.urls import path

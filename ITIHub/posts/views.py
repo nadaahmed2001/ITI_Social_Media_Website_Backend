@@ -9,7 +9,11 @@ from .serializers import PostSerializer, CommentSerializer , ReactionSerializer
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views import View
 from django.shortcuts import render
-
+from django.urls import reverse_lazy
+from django.contrib.auth.mixins import UserPassesTestMixin
+from django.views.generic.edit import UpdateView, DeleteView
+from django.views.generic import ListView
+from .forms import CommentForm
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
@@ -134,3 +138,26 @@ class PostReactionsView(APIView):
         # Serialize the reactions
         serializer = ReactionSerializer(reactions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+class CommentEditView(LoginRequiredMixin,UserPassesTestMixin,UpdateView):
+    model = Comment
+    form_class = CommentForm
+    template_name = 'comment_edit.html'
+
+    def get_success_url(self):
+        return reverse_lazy('post-detail', kwargs={'pk': self.object.post.pk})
+
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
+    
+class CommentDeleteView(LoginRequiredMixin,UserPassesTestMixin,DeleteView):
+    model = Comment
+    template_name = 'comment_delete.html'
+
+    def get_success_url(self):
+        return reverse_lazy('post-detail', kwargs={'pk': self.object.post.pk})
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
