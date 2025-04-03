@@ -5,13 +5,15 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
-from .serializers import PostSerializer, CommentSerializer
+from .serializers import PostSerializer, CommentSerializer, ReactionSerializer
 from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
 from users.permissions import IsStudentOrSupervisor
 from notifications.models import Notification
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer

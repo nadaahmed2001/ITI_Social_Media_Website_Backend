@@ -18,7 +18,8 @@ from django.utils.crypto import get_random_string
 import secrets
 from datetime import timedelta
 from django.utils import timezone
-
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
