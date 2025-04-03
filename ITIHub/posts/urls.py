@@ -5,7 +5,7 @@ from .views import (PostListCreateView, PostDetailView, CommentCreateView,
 
 urlpatterns = [
     path('', PostListCreateView.as_view(), name='post-list-create'),
-    path('<int:pk>/', PostDetailView.as_view(), name='post-detail'),  # Use post_id
+    path('<int:post_id>/', PostDetailView.as_view(), name='post-detail'),  # Use post_id
     path('<int:post_id>/comment/', CommentCreateView.as_view(), name='comment-create'),  # Use post_id
     # path('comment/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
     path('<int:post_id>/comments/', ListCommentsView.as_view(), name='post-comments'),
