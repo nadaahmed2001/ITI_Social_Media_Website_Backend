@@ -8,6 +8,9 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from .models import GroupChat, GroupMessage, ChatMessage
 from .serializers import GroupChatSerializer, GroupMessageSerializer, ChatMessageSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 # 🟢 View Group Chat Page
 def group_chat_view(request, group_id):
@@ -73,3 +76,54 @@ class ChatMessageListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         receiver = get_object_or_404(User, id=self.kwargs['receiver_id'])
         serializer.save(sender=self.request.user, receiver=receiver)
+
+class PrivateChatUsersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        # Get all users who have private chats with the authenticated user
+        chat_users = User.objects.filter(
+            Q(sent_messages__receiver=user) | Q(received_messages__sender=user)
+        ).distinct()
+
+        # Serialize the user data
+        user_data = [{"id": chat_user.id, "username": chat_user.username , "email": chat_user.email} for chat_user in chat_users]
+        return Response(user_data)
+
+# 🟢 Clear Group Chat Messages
+class ClearGroupChatView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, group_id, *args, **kwargs):
+        group = get_object_or_404(GroupChat, id=group_id, members=request.user)
+        if not group.supervisors.filter(id=request.user.id).exists():
+            return Response({"error": "You do not have permission to clear this group chat."}, status=status.HTTP_403_FORBIDDEN)
+        
+        GroupMessage.objects.filter(group=group).delete()
+        return Response({"message": "Group chat cleared successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+# 🟢 Clear Private Chat Messages
+class ClearPrivateChatView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, receiver_id, *args, **kwargs):
+        user1 = request.user
+        user2 = get_object_or_404(User, id=receiver_id)
+        ChatMessage.objects.filter(Q(sender=user1, receiver=user2) | Q(sender=user2, receiver=user1)).delete()
+        return Response({"message": "Private chat cleared successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+# 🟢 Edit a Message
+class EditMessageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request, message_id, *args, **kwargs):
+        message = get_object_or_404(ChatMessage, id=message_id, sender=request.user)
+        new_content = request.data.get("content", "").strip()
+
+        if not new_content:
+            return Response({"error": "Message content cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        message.content = new_content
+        message.save()
+        return Response({"message": "Message updated successfully.", "updated_message": message.content}, status=status.HTTP_200_OK)
