@@ -12,7 +12,7 @@ from .serializers import (  UserSerializer,
                             SkillSerializer, 
                             ChangePasswordSerializer, 
                             ChangeEmailSerializer)
-
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -24,6 +24,8 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from .models import Skill
+from django.core.exceptions import ObjectDoesNotExist
 
 
 
@@ -125,26 +127,64 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return obj.user == request.user
 
+# class UserAccountAPI(APIView):
+    # permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    # parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    # def get(self, request):
+    #     # Get the logged-in user's profile
+    #     profile = request.user.profile
+    #     serializer = ProfileSerializer(profile)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # def put(self, request):
+    #     # Get the logged-in user's profile
+    #     profile = request.user.profile
+    #     serializer = ProfileSerializer(profile, data=request.data, partial=True)
+
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(serializer.data, status=status.HTTP_200_OK)
+        
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UserAccountAPI(APIView):
-    permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticated]
+    # --- Add Parsers to handle potential file uploads ---
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def get(self, request):
-        # Get the logged-in user's profile
-        profile = request.user.profile
-        serializer = ProfileSerializer(profile)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            # Get the profile associated with the logged-in user
+            profile = request.user.profile
+            # Serialize the profile data
+            serializer = ProfileSerializer(profile, context={'request': request}) # Pass context if needed by serializer
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+             # Handle case where user exists but profile doesn't (shouldn't happen with signals)
+             return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+             # Handle case where request.user doesn't have .profile (less likely for OneToOne)
+             return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
-        # Get the logged-in user's profile
-        profile = request.user.profile
-        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        try:
+            profile = request.user.profile # Get the profile instance to update
+        except ObjectDoesNotExist:
+             return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+             return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Initialize serializer with the instance, request data (merged fields/files), and partial=True
+        # ProfileSerializer now expects 'profile_image' file data if present
+        serializer = ProfileSerializer(profile, data=request.data, partial=True, context={'request': request})
 
         if serializer.is_valid():
-            serializer.save()
+            serializer.save() # This handles saving text fields AND uploading image via Cloudinary storage
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
+        # Return validation errors (e.g., invalid image format, field errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 # ========================================= User account change email - change password views ===================================================
 User = get_user_model()
 

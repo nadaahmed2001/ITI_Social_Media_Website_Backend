@@ -45,6 +45,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+
 # Application definition
 INSTALLED_APPS = [
     "users",  # Custom User Model App (Must be before auth)
@@ -53,7 +56,9 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    # 'cloudinary_storage',
     "django.contrib.staticfiles",
+    # 'cloudinary',
     "batches",
     "groups",
     "posts",
@@ -198,6 +203,44 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# =============================================== Cloudinary Configuration ===============================================
+# !! Use Environment Variables in production for keys/secrets !!
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dsaznefnt', 
+    'API_KEY': '974213622245136',       
+    'API_SECRET': 'Q1bg9XZJVRD6gTVad7lfPouOow0',
+    'SECURE': True, # Use HTTPS
+    
+    #  ============ To be used in production ================================
+    # 'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'YOUR_CLOUD_NAME'), # Replace default with yours or set env var
+    # 'API_KEY': os.environ.get('CLOUDINARY_API_KEY', 'YOUR_API_KEY'),        # Replace default with yours or set env var
+    # 'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', 'YOUR_API_SECRET'), # Replace default with yours or set env var
+    # 'SECURE': True, # Use HTTPS
+    # Optional settings:
+    # 'FOLDER': 'your_app_media', # Organize uploads in a specific Cloudinary folder
+    # 'RESOURCE_TYPE': 'image', # Default, can be 'video', 'raw', 'auto'
+    # 'OVERWRITE': False, # Prevent overwriting files with same name? Default is usually true.
+    # 'TAGS': ['app_media'], # Add tags to uploaded assets
+}
+
+# --- Default File Storage ---
+# Tell Django to use Cloudinary for all media file uploads
+
+# ----- Static Files Storage (Optional - you can also use Cloudinary for static files) -----
+# If you want Cloudinary for static files too (requires collectstatic):
+# STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+# STATIC_URL = '/static/' # Keep this for local dev, Cloudinary URL used in prod
+# STATIC_ROOT = BASE_DIR / 'staticfiles_collected' # For collectstatic
+
+# --------------------------------------- Media Files --------------------------------------
+# MEDIA_URL is now effectively handled by Cloudinary, but define for consistency / local fallback if needed
+# MEDIA_URL = '/media/' # This might not be used directly if Cloudinary serves all media
+# MEDIA_ROOT is no longer needed for cloud storage, Django won't store media locally
+# MEDIA_ROOT = BASE_DIR / 'mediafiles' # <-- Can remove or ignore this
+# ----------------------------------------- Site ID ----------------------------------------
+SITE_ID = 1
+
+# ================================================ Email Config =======================================================
 SITE_NAME = 'ITIHub'
 EMAIL_CHANGE_EXPIRATION_HOURS = 0.01
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

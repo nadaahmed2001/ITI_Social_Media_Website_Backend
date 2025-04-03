@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404
 from users.models import Profile
 from projects.models import Project, Tag
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
 
 
 # Create your views here.
@@ -110,11 +112,6 @@ class ProjectAPI(APIView):
         serializer = ProjectSerializer(project, data=data_to_serialize, partial=True, context={'request': request})
 
         if serializer.is_valid():
-            # --- REMOVED REDUNDANT CHECK ---
-            # if Project.objects.filter(owner=request.user.profile, title__iexact=serializer.validated_data['title']).exists():
-            #     return Response({"detail": "A project with this title already exists."}, status=status.HTTP_400_BAD_REQUEST)
-            # --- END REMOVAL ---
-
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -137,9 +134,75 @@ class ProjectAPI(APIView):
         project.delete()
         return Response({"message": "Project deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
+# class ProjectAPI(APIView):
+#     permission_classes = [IsAuthenticated]
+#     # --- Add Parsers ---
+#     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+#     def get(self, request, pk=None):
+#         # --- Keep GET logic with optional owner filter ---
+#         if pk:
+#             project = get_object_or_404(Project, pk=pk)
+#             # Optional: Add permission check if non-owners shouldn't see specific projects via direct URL
+#             # self.check_object_permissions(request, project)
+#             serializer = ProjectSerializer(project, context={'request': request})
+#             return Response(serializer.data)
+#         else:
+#             queryset = Project.objects.all()
+#             owner_id = request.query_params.get('owner', None)
+#             if owner_id:
+#                 # Filter by owner profile ID if provided
+#                 queryset = queryset.filter(owner__id=owner_id)
+#             else:
+#                 # Optional: Default to only showing user's own projects if no owner specified?
+#                 # queryset = queryset.filter(owner=request.user.profile)
+#                 # Or maybe allow viewing all if no filter - depends on requirements
+#                 pass
+
+#             serializer = ProjectSerializer(queryset, many=True, context={'request': request})
+#             return Response(serializer.data)
+
+#     def post(self, request, *args, **kwargs):
+#         # --- Simplified POST ---
+#         # request.data contains merged form fields and files due to parsers
+#         serializer = ProjectSerializer(data=request.data, context={'request': request})
+#         if serializer.is_valid():
+#             # Pass owner profile to the serializer's save -> create method
+#             serializer.save(owner=request.user.profile)
+#             return Response(serializer.data, status=status.HTTP_201_CREATED)
+#         # Return validation errors from the serializer
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     def put(self, request, pk, *args, **kwargs):
+#         # --- Simplified PUT ---
+#         project = get_object_or_404(Project, pk=pk)
+#         # Check ownership permission
+#         if project.owner != request.user.profile:
+#             return Response({"detail": "You do not have permission to update this project."}, status=status.HTTP_403_FORBIDDEN)
+
+#         # Pass request data directly to the serializer for partial update
+#         serializer = ProjectSerializer(project, data=request.data, partial=True, context={'request': request})
+#         if serializer.is_valid():
+#             # save() calls serializer's update method
+#             serializer.save()
+#             return Response(serializer.data, status=status.HTTP_200_OK)
+#         # Return validation errors from the serializer
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+#     def delete(self, request, pk, *args, **kwargs):
+#         # --- Keep DELETE logic ---
+#         project = get_object_or_404(Project, pk=pk)
+#         if project.owner != request.user.profile:
+#             return Response({"detail": "You do not have permission to delete this project."}, status=status.HTTP_403_FORBIDDEN)
+#         project.delete()
+#         # Consider deleting associated image file from Cloudinary here if desired,
+#         # though `django-cloudinary-storage` might have settings for this.
+#         return Response({"message": "Project deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
 
 class ProjectTagAPI(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     def post(self, request, pk):
         # Add a tag to the project
         project = get_object_or_404(Project, pk=pk)

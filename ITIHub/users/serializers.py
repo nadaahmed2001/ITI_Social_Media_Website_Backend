@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "phone", "profile_picture", "is_student", "is_supervisor"]
+        fields = ["id", "username", "email", "phone", "is_student", "is_supervisor"]
 
 class RegisterStudentSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -31,9 +31,11 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    profile_image = serializers.ImageField(required=False, allow_null=True)
     class Meta:
         model = Profile
         fields = "__all__"
+        read_only_fields = ['user', 'created', 'updated'] # User link shouldn't be changed via this serializer
 
 
 
