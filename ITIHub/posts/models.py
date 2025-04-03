@@ -34,17 +34,17 @@ class Comment(models.Model):
 
 class Reaction(models.Model):
     REACTIONS = [
-        ('Like', 'Like'),
-        ('Heart', 'Heart'),
-        ('Celebrate', 'Celebrate'),
-        ('Laugh', 'Laugh'),
-        ('Insightful', 'Insightful'),
-        ('Support', 'Support'),
+        ("like", "Like"),
+        ("love", "Love"),
+        ("haha", "Haha"),
+        ("wow", "Wow"),
+        ("sad", "Sad"),
+        ("angry", "Angry"),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True)
-    reaction_type = models.CharField(max_length=20, choices=REACTIONS)
+    reaction_type = models.CharField(max_length=10, choices=REACTIONS)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     class Meta:

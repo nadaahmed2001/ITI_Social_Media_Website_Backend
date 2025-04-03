@@ -1,3 +1,4 @@
+from .models import User
 from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -5,13 +6,19 @@ from rest_framework import status, permissions
 from .models import Profile, Skill
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import UserSerializer, RegisterStudentSerializer, LoginSerializer, ProfileSerializer, SkillSerializer
+from .serializers import UserSerializer, RegisterStudentSerializer, LoginSerializer, ProfileSerializer, SkillSerializer, PasswordResetSerializer, SetNewPasswordSerializer
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.permissions import AllowAny
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+import secrets
+from datetime import timedelta
+from django.utils import timezone
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
@@ -47,6 +54,8 @@ class RegisterStudentView(APIView):
                 return Response({"error": "This National ID is not allowed to register"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
@@ -96,6 +105,61 @@ class UserProfileView(APIView):
             "username": user.username,
             "email": user.email
         })
+
+# ===============================================================================================================================================
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            user = get_object_or_404(User, email=email)
+
+            reset_code = user.generate_reset_code()  
+
+            user.password_reset_code = reset_code
+            user.reset_code_expiry = timezone.now() + timedelta(hours=1)
+            user.save()
+
+            send_mail(
+                "Password Reset Code",
+                f"Your password reset code is: {reset_code}. Please use this code to reset your password.",
+                "noreply@itihub.com",
+                [user.email],
+                fail_silently=False,
+            )
+
+            return Response({"message": "Password reset code sent successfully."}, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        reset_code = request.data.get("reset_code")
+        new_password = request.data.get("new_password")
+
+        if not reset_code or not new_password:
+            return Response({"error": "Reset code and new password are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.filter(password_reset_code=reset_code).first()
+        if user is None:
+            return Response({"error": "Invalid or expired reset code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.is_reset_code_expired():
+            return Response({"error": "The reset code has expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+    
+        user.set_password(new_password)
+        user.password_reset_code = ""  
+        user.reset_code_expiry = None  
+        user.save()
+
+        return Response({"message": "Password reset successfully."}, status=status.HTTP_200_OK)
+
 
 
 # ===============================================================================================================================================

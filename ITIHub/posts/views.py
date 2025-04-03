@@ -5,11 +5,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
-from .serializers import PostSerializer, CommentSerializer , ReactionSerializer
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views import View
-from django.shortcuts import render
-
+from .serializers import PostSerializer, CommentSerializer
+from users.decorators import student_or_supervisor_required
+from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from users.permissions import IsStudentOrSupervisor
+from notifications.models import Notification
+from django.contrib.contenttypes.models import ContentType
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
@@ -41,6 +43,45 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         if post.author != request.user:
             return Response({"error": "You are not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+#  Like & Dislike Post (Toggle)
+class PostLikeDislikeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, action):
+        post = get_object_or_404(Post, pk=pk)
+
+        if action == "like":
+            post.toggle_like(request.user)
+            if post.author != request.user:  
+                Notification.objects.create(
+                    recipient=post.author,
+                    sender=request.user,
+                    notification_type="reaction",
+                    reaction_type="like", 
+                    related_content_type=ContentType.objects.get_for_model(post),
+                    related_object_id=post.id
+                )
+
+        elif action == "dislike":
+            post.toggle_dislike(request.user)
+            if post.author != request.user:
+                Notification.objects.create(
+                    recipient=post.author,
+                    sender=request.user,
+                    notification_type="reaction",
+                    reaction_type="dislike",
+                    related_content_type=ContentType.objects.get_for_model(post),
+                    related_object_id=post.id
+                )
+
+        else:
+            return Response(
+                {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
@@ -82,7 +123,7 @@ class AddReaction(APIView):
             return Response({"error": "Invalid target"}, status=status.HTTP_400_BAD_REQUEST)
 
         Reaction.objects.filter(user=request.user, post=post_id, comment=comment_id).delete()
-        Reaction.objects.create(
+        reaction =Reaction.objects.create(
             user=request.user, 
             post=target if isinstance(target, Post) else None, 
             comment=target if isinstance(target, Comment) else None, 
