@@ -114,8 +114,6 @@ class UserProfileView(APIView):
         })
 
 
-
-
 # ======================================================= Profile & Skills Views ================================================================
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
@@ -175,14 +173,14 @@ class ChangePasswordView(APIView):
             subject = f"Password Changed for Your Account on {settings.SITE_NAME or 'ITIHub'}" # Use SITE_NAME from settings if defined
             # Add a timestamp for context
             change_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z') # e.g., 2025-04-03 04:21:27 EET
-            
+            reset_password_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/users/password-reset/"
             message = (
                 f"Hi {user.username},\n\n"
                 f"This is a confirmation that the password for your account was successfully changed at {change_time}.\n\n"
                 f"If you made this change, Ignore this email.\n\n"
                 f"If you did NOT change your password, please secure your account immediately by resetting your password "
                 f"and contact our support team.\n\n"
-                f"Reset Password: [Link]\n\n"
+                f"Reset Password: ({reset_password_url}) \n\n"
                 f"Thanks,\n{settings.SITE_NAME or 'ITIHub'}" # Customize signature
             )
             sender = settings.DEFAULT_FROM_EMAIL 
