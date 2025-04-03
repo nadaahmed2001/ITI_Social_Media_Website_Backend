@@ -18,5 +18,3 @@ urlpatterns = [
     path('skills/', SkillAPI.as_view(), name='get_all_skills_api'),  # For getting all skills
     path('skills/<uuid:pk>/', SkillAPI.as_view(), name='skill_api'),  # For getting, updating, and deleting a specific skill
 ]
-
-
