@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 import uuid
+from django.conf import settings 
+from django.utils import timezone
+from datetime import timedelta
 
 class User(AbstractUser):
     """
@@ -85,3 +88,23 @@ class Follow(models.Model):
 
     def __str__(self):
         return f"{self.follower.username} follows {self.following.username}"
+
+
+# Table to store the email change requests
+class EmailChangeRequest(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    new_email = models.EmailField()
+    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(hours=settings.EMAIL_CHANGE_EXPIRATION_HOURS or 1)
+        super().save(*args, **kwargs)
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def __str__(self):
+        return f"Email change request for {self.user.username} to {self.new_email}"

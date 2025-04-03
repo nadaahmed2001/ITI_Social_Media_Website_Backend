@@ -86,17 +86,6 @@ REST_FRAMEWORK = {
 }
 
 
-#start
-# REST_FRAMEWORK = {
-#     'DEFAULT_AUTHENTICATION_CLASSES': (
-#         'rest_framework.authentication.SessionAuthentication',
-#         'rest_framework.authentication.TokenAuthentication',
-#     ),
-#     'DEFAULT_PERMISSION_CLASSES': (
-#         'rest_framework.permissions.IsAuthenticated',
-#     ),
-# }
-#end
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
@@ -208,6 +197,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+SITE_NAME = 'ITIHub'
+EMAIL_CHANGE_EXPIRATION_HOURS = 0.01
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'testiticommunity@gmail.com'
+EMAIL_HOST_PASSWORD = 'pzsquwhzxdpxjjzd'
+DEFAULT_FROM_EMAIL = 'testiticommunity@gmail.com'
+
+FRONTEND_BASE_URL = 'http://localhost:5173' 
+BACKEND_BASE_URL = 'http://localhost:8000' 
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/

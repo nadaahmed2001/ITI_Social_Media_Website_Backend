@@ -24,24 +24,12 @@ class IsProjectOwnerOrReadOnly(BasePermission):
 # Project API
 class ProjectAPI(APIView):
     permission_classes = [IsAuthenticated]
-
-    # def get(self, request, pk=None):
-    #     if pk:
-    #         # Retrieve a specific project
-    #         project = get_object_or_404(Project, pk=pk)
-    #         serializer = ProjectSerializer(project)
-    #         return Response(serializer.data)
-    #     else:
-    #         # List all projects
-    #         projects = Project.objects.all()
-    #         serializer = ProjectSerializer(projects, many=True)
-    #         return Response(serializer.data)
     def get(self, request, pk=None):
         if pk:
             # Retrieve a specific project (remains the same)
             project = get_object_or_404(Project, pk=pk)
             # Optional: Add permission check if needed even for GET specific
-            # self.check_object_permissions(request, project)
+            self.check_object_permissions(request, project)
             serializer = ProjectSerializer(project, context={'request': request}) # Pass context if serializer needs it
             return Response(serializer.data)
         else:
@@ -86,39 +74,53 @@ class ProjectAPI(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    
     def put(self, request, pk):
-        # Update an existing project
         project = get_object_or_404(Project, pk=pk)
-        
-        # Check if the user is the owner of the project
+
+        # Permission check (good to keep)
         if project.owner != request.user.profile:
             return Response({"detail": "You do not have permission to update this project."}, status=status.HTTP_403_FORBIDDEN)
-        
-        # Extract and process tags from the request data
-        tags_data = request.data.get('tags', [])
-        tag_objects = []
 
-        # Loop through the provided tags and check if they exist, otherwise create them
-        for tag_name in tags_data:
-            tag, created = Tag.objects.get_or_create(name=tag_name)
-            tag_objects.append(tag)
-        
-        # Add the tags to the request data (this ensures they are saved with the project)
-        request.data['tags'] = [tag.id for tag in tag_objects]
+        # --- Consider moving tag processing to serializer's update method if complex ---
+        # For now, ensure request.data['tags'] contains IDs before serializer if needed
+        # Note: If frontend sends tag names, serializer needs to handle conversion or this view logic might be needed
+        # But let's assume the frontend sends data the serializer expects based on its definition.
+        # If the serializer expects tag IDs, ensure the incoming request.data['tags'] has IDs.
+        # If the serializer expects tag names (e.g., using SlugRelatedField), ensure names are sent.
+        # Based on current ProjectSerializer expecting IDs, the frontend sends names, and this code converts them:
+        # This seems overly complex in the view.
 
-        # Pass the 'request' object to the serializer context
-        serializer = ProjectSerializer(project, data=request.data, partial=True, context={'request': request})
-        
+        data_to_serialize = request.data.copy() # Work with a copy
+
+        # If frontend sends names in 'tags' and serializer needs IDs:
+        if 'tags' in data_to_serialize and isinstance(data_to_serialize['tags'], list):
+            tag_objects = []
+            for tag_name in data_to_serialize['tags']:
+                # Assuming tag names are sent as strings
+                if isinstance(tag_name, str):
+                    tag, created = Tag.objects.get_or_create(name__iexact=tag_name.strip(), defaults={'name': tag_name.strip()}) # Case-insensitive get_or_create
+                    tag_objects.append(tag)
+                # Handle if IDs are somehow sent mixed in (less likely)
+                # elif isinstance(tag_name, (int, str)) and Tag.objects.filter(pk=tag_name).exists():
+                #    tag_objects.append(Tag.objects.get(pk=tag_name))
+            data_to_serialize['tags'] = [tag.id for tag in tag_objects] # Replace names with IDs for serializer
+
+
+        serializer = ProjectSerializer(project, data=data_to_serialize, partial=True, context={'request': request})
+
         if serializer.is_valid():
-            # Check if the user entered an existing title
-            if Project.objects.filter(owner=request.user.profile, title__iexact=serializer.validated_data['title']).exists():
-                return Response({"detail": "A project with this title already exists."}, status=status.HTTP_400_BAD_REQUEST)
-            
+            # --- REMOVED REDUNDANT CHECK ---
+            # if Project.objects.filter(owner=request.user.profile, title__iexact=serializer.validated_data['title']).exists():
+            #     return Response({"detail": "A project with this title already exists."}, status=status.HTTP_400_BAD_REQUEST)
+            # --- END REMOVAL ---
+
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
+        # If serializer validation fails, return its errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     def delete(self, request, pk):
         # Delete a project
