@@ -49,6 +49,17 @@ class CommentSerializer(serializers.ModelSerializer):
             comment.attachments.add(attachment)
         
         return comment
+    
+class ReactionSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()  # Display username as string
+    post = serializers.StringRelatedField()  # Display post as string (useful for debugging)
+    comment = serializers.StringRelatedField()  # Display comment as string (useful for debugging)
+
+    class Meta:
+        model = Reaction
+        fields = ['id', 'user', 'reaction_type', 'post', 'comment', 'timestamp']
+
+
 # from rest_framework import serializers
 # from .models import Post, Comment, Attachment, Reaction
 

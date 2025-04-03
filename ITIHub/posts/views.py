@@ -5,7 +5,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
-from .serializers import PostSerializer, CommentSerializer
+from .serializers import PostSerializer, CommentSerializer , ReactionSerializer
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views import View
+from django.shortcuts import render
+
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
@@ -112,3 +116,21 @@ class ListCommentsView(generics.ListAPIView):
         # Get the post using the 'post_id' in the URL
         post_id = self.kwargs['post_id']
         return Comment.objects.filter(post_id=post_id).order_by('-created_on')  # Assuming you have a 'created_on' field
+    
+class PostReactionsView(APIView):
+    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+    
+    def get(self, request, post_id):
+        """Retrieve all reactions for a specific post"""
+        try:
+            # Get the post instance
+            post = Post.objects.get(id=post_id)
+        except Post.DoesNotExist:
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Filter reactions by post
+        reactions = Reaction.objects.filter(post=post)
+
+        # Serialize the reactions
+        serializer = ReactionSerializer(reactions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

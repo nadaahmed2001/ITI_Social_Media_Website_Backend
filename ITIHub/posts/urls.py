@@ -1,7 +1,7 @@
 
 from django.urls import path
 from .views import (PostListCreateView, PostDetailView, CommentCreateView,
-                    CommentDetailView, AddReaction, RemoveReaction , ListCommentsView)
+                    CommentDetailView, AddReaction, RemoveReaction , ListCommentsView , PostReactionsView)
 
 urlpatterns = [
     path('', PostListCreateView.as_view(), name='post-list-create'),
@@ -13,6 +13,7 @@ urlpatterns = [
     path('comment/<int:comment_id>/react/remove/', RemoveReaction.as_view(), name='comment-remove-reaction'),
     path('<int:post_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='post-react'),
     path('comment/<int:comment_id>/react/<str:reaction_type>/', AddReaction.as_view(), name='comment-react'),
+    path('<int:post_id>/reactions/', PostReactionsView.as_view(), name='post-reactions'),
 ]
 
 # from django.urls import path
