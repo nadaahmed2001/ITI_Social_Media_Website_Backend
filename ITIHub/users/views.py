@@ -9,8 +9,14 @@ from .serializers import UserSerializer, RegisterStudentSerializer, LoginSeriali
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import AllowAny
 
+@method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
+    permission_classes = [AllowAny]
+
     def post(self, request):
         print("I am in the register student view")
         serializer = RegisterStudentSerializer(data=request.data)
@@ -21,7 +27,6 @@ class RegisterStudentView(APIView):
                 unverified_entry = UnverifiedNationalID.objects.get(national_id=national_id)
                 print("I have found the unverified entry: ", unverified_entry)
 
-                # Ensure the student hasn't already registered
                 if VerifiedNationalID.objects.filter(national_id=national_id).exists():
                     return Response({"error": "This National ID is already registered"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -32,20 +37,16 @@ class RegisterStudentView(APIView):
                 user.save()
                 print("I have created the user: ", user)
 
-                # Create a student 
                 student = Student.objects.create(user=user, status="Active")
                 print("I have created the student: ", student)
                 StudentBatch.objects.create(student=student, batch=batch)
                 unverified_entry.delete()
-
 
                 return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
             except UnverifiedNationalID.DoesNotExist:
                 return Response({"error": "This National ID is not allowed to register"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
