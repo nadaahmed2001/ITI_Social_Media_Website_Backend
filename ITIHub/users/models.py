@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 import uuid
+import secrets
+from datetime import timedelta
+from django.utils import timezone
 
 class User(AbstractUser):
     """
@@ -23,6 +26,25 @@ class User(AbstractUser):
     # Fix for conflicts with Django’s default User model
     groups = models.ManyToManyField(Group, related_name="custom_user_groups", blank=True)
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions", blank=True)
+
+    # Fields for password reset functionality
+    password_reset_code = models.CharField(max_length=50, blank=True, null=True)  # Code for password reset
+    reset_code_expiry = models.DateTimeField(blank=True, null=True)  # Expiry date for the reset code
+
+    def generate_reset_code(self):
+        """
+        Generates a secure reset code.
+        """
+        # return secrets.token_urlsafe(16)  # A random token, safe for URLs
+        return ''.join(secrets.choice('0123456789') for _ in range(6))
+    
+    def is_reset_code_expired(self):
+        """
+        Checks if the reset code has expired.
+        """
+        if self.reset_code_expiry and timezone.now() > self.reset_code_expiry:
+            return True
+        return False
 
     def __str__(self):
         role = "Supervisor" if self.is_supervisor else "Student" if self.is_student else "User"
