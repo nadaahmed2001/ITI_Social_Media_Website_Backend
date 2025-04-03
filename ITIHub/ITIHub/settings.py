@@ -44,6 +44,7 @@ SECRET_KEY = "django-insecure-erj+_g2fu16q8xfak*u1@+%$0^g(@r_u&s64qj*spv&+b3xi-4
 DEBUG = True
 
 ALLOWED_HOSTS = []
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Application definition
 INSTALLED_APPS = [
