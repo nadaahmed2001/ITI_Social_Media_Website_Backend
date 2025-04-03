@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     GroupChatListCreateView, GroupChatDetailView, GroupMessageListCreateView,
     ChatMessageListCreateView, UserChatDashboardView, PrivateChatUsersView,
-    ClearGroupChatView, ClearPrivateChatView, EditMessageView
+    ClearGroupChatView, ClearPrivateChatView, EditMessageView, DeleteMessageView, delete_group_message
 )
 
 urlpatterns = [
@@ -15,4 +15,6 @@ urlpatterns = [
     path('group-chats/<int:group_id>/clear/', ClearGroupChatView.as_view(), name='clear-group-chat'),
     path('private-chats/<int:receiver_id>/clear/', ClearPrivateChatView.as_view(), name='clear-private-chat'),
     path('messages/<int:message_id>/edit/', EditMessageView.as_view(), name='edit-message'),
+    path('messages/<int:message_id>/delete/', DeleteMessageView.as_view(), name='delete-message'),
+    path('groups/<int:group_id>/messages/<int:message_id>/delete/', delete_group_message, name='delete-group-message'),
 ]

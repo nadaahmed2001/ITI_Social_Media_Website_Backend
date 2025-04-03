@@ -11,6 +11,7 @@ from .serializers import GroupChatSerializer, GroupMessageSerializer, ChatMessag
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view
 
 # 🟢 View Group Chat Page
 def group_chat_view(request, group_id):
@@ -75,7 +76,13 @@ class ChatMessageListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         receiver = get_object_or_404(User, id=self.kwargs['receiver_id'])
-        serializer.save(sender=self.request.user, receiver=receiver)
+        message = serializer.save(sender=self.request.user, receiver=receiver)
+        print(f"Message created: {message}")
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        response.data['id'] = self.get_queryset().last().id
+        return response
 
 class PrivateChatUsersView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -118,12 +125,60 @@ class EditMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def put(self, request, message_id, *args, **kwargs):
-        message = get_object_or_404(ChatMessage, id=message_id, sender=request.user)
+        # Get the message and ensure the sender is the authenticated user
+        message = get_object_or_404(ChatMessage, id=message_id)
+
+        # Check if the authenticated user is the sender
+        if message.sender != request.user:
+            return Response(
+                {"error": "You are not authorized to edit this message."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get the new content from the request
         new_content = request.data.get("content", "").strip()
 
+        # Validate the new content
         if not new_content:
-            return Response({"error": "Message content cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Message content cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        message.content = new_content
+        # Update the message content and save it to the database
+        message.message = new_content
         message.save()
-        return Response({"message": "Message updated successfully.", "updated_message": message.content}, status=status.HTTP_200_OK)
+
+        # Return a success response
+        return Response(
+            {"message": "Message updated successfully.", "updated_message": message.message},
+            status=status.HTTP_200_OK
+        )
+
+class DeleteMessageView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, message_id, *args, **kwargs):
+        # Get the message and ensure the sender is the authenticated user
+        message = get_object_or_404(ChatMessage, id=message_id, sender=request.user)
+
+        # Delete the message
+        message.delete()
+        return Response({"message": "Message deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+    
+@api_view(['DELETE'])
+def delete_group_message(request, group_id, message_id):
+    try:
+        # Ensure the user is a member of the group
+        group = get_object_or_404(GroupChat, id=group_id, members=request.user)
+
+        # Get the message and ensure it belongs to the group
+        message = get_object_or_404(GroupMessage, id=message_id, group=group)
+
+        # Delete the message
+        message.delete()
+        return Response({"message": "Message deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+    except GroupChat.DoesNotExist:
+        return Response({"error": "Group not found or you are not a member."}, status=status.HTTP_404_NOT_FOUND)
+    except GroupMessage.DoesNotExist:
+        return Response({"error": "Message not found in this group."}, status=status.HTTP_404_NOT_FOUND)
