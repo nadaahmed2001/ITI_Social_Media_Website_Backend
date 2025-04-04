@@ -13,6 +13,8 @@ from users.permissions import IsStudentOrSupervisor
 from notifications.models import Notification
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 
 class PostListCreateView(generics.ListCreateAPIView):
@@ -29,6 +31,7 @@ class PostListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
@@ -110,6 +113,8 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({"error": "You are not authorized to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
+
+@method_decorator(csrf_exempt, name="dispatch")
 class AddReaction(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -135,6 +140,7 @@ class AddReaction(APIView):
         return Response({"message": "Reaction added successfully"}, status=status.HTTP_201_CREATED)
 
 #   RemoveReaction API
+@method_decorator(csrf_exempt, name="dispatch")
 class RemoveReaction(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -150,7 +156,8 @@ class RemoveReaction(APIView):
             return Response({"error": "Invalid target"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"success": True}, status=status.HTTP_200_OK)
-    
+
+@method_decorator(csrf_exempt, name="dispatch")
 class ListCommentsView(generics.ListAPIView):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
@@ -159,7 +166,7 @@ class ListCommentsView(generics.ListAPIView):
         # Get the post using the 'post_id' in the URL
         post_id = self.kwargs['post_id']
         return Comment.objects.filter(post_id=post_id).order_by('-created_on')  # Assuming you have a 'created_on' field
-    
+@method_decorator(csrf_exempt, name="dispatch")
 class PostReactionsView(APIView):
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
     

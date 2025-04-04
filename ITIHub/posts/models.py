@@ -33,13 +33,21 @@ class Comment(models.Model):
         return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
 
 class Reaction(models.Model):
+    # REACTIONS = [
+    #     ("like", "Like"),
+    #     ("love", "Love"),
+    #     ("haha", "Haha"),
+    #     ("wow", "Wow"),
+    #     ("sad", "Sad"),
+    #     ("angry", "Angry"),
+    # ]
     REACTIONS = [
-        ("like", "Like"),
-        ("love", "Love"),
-        ("haha", "Haha"),
-        ("wow", "Wow"),
-        ("sad", "Sad"),
-        ("angry", "Angry"),
+        ('Like', 'Like'),
+        ('Love', 'Love'),
+        ('Celebrate', 'Celebrate'),
+        ('Laugh', 'Laugh'),
+        ('Insightful', 'Insightful'),
+        ('Support', 'Support'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
