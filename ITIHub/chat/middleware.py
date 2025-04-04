@@ -1,6 +1,12 @@
+import os
+import django
 from urllib.parse import parse_qs
 from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
+
+# Ensure Django settings are configured
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ITIHub.settings')
+django.setup()
 
 class TokenAuthMiddleware:
     """
