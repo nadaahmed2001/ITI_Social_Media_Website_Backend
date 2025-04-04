@@ -7,6 +7,7 @@ from .models import GroupMessage, ChatMessage
 from django.contrib.auth.models import User
 import os
 import django
+from django.db.models import Q  # Add this import
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        action = data.get('action')  # New: Determine the action (send, edit, delete)
+        action = data.get('action')  # Determine the action (send, edit, delete, clear)
 
         if action == 'send':
             message = data['message']
@@ -101,6 +102,16 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "delete_message",
                     "message_id": message_id,
+                }
+            )
+        elif action == 'clear':
+            # Clear all messages in the group chat
+            await self.clear_group_messages()
+            # Notify all clients in the group that the chat has been cleared
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "clear_chat",
                 }
             )
 
@@ -143,6 +154,13 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
             "message_id": event["message_id"],
         }))
 
+    async def clear_chat(self, event):
+        # Notify clients that the group chat has been cleared
+        await self.send(text_data=json.dumps({
+            "event": "clear_chat",
+            "message": "Group chat has been cleared."
+        }))
+
     @sync_to_async
     def save_group_message(self, message):
         # Save the message to the database
@@ -163,6 +181,11 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
     def delete_group_message(self, message_id):
         # Delete the message from the database
         GroupMessage.objects.filter(id=message_id, group_id=self.group_id).delete()
+
+    @sync_to_async
+    def clear_group_messages(self):
+        # Delete all messages in the group chat from the database
+        GroupMessage.objects.filter(group_id=self.group_id).delete()
 
 class PrivateChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -193,7 +216,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        action = data.get('action')  # New: Determine the action (send, edit, delete)
+        action = data.get('action')  # Determine the action (send, edit, delete, clear)
 
         if action == 'send':
             message = data['message']
@@ -235,6 +258,16 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                     "message_id": message_id,
                 }
             )
+        elif action == 'clear':
+            # Clear all messages in the private chat
+            await self.clear_private_messages()
+            # Notify both users in the private chat that the chat has been cleared
+            await self.channel_layer.group_send(
+                self.group_name,
+                {
+                    "type": "clear_chat",
+                }
+            )
 
     async def chat_message(self, event):
         # Ensure the message is broadcast to all clients in the private chat
@@ -259,6 +292,13 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
             "message_id": event["message_id"],
         }))
 
+    async def clear_chat(self, event):
+        # Notify clients that the private chat has been cleared
+        await self.send(text_data=json.dumps({
+            "event": "clear_chat",
+            "message": "Private chat has been cleared."
+        }))
+
     @sync_to_async
     def save_private_message(self, message):
         # Save the message to the database
@@ -280,3 +320,11 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
     def delete_private_message(self, message_id):
         # Delete the message from the database
         ChatMessage.objects.filter(id=message_id, sender=self.user).delete()
+
+    @sync_to_async
+    def clear_private_messages(self):
+        # Delete all messages in the private chat from the database
+        ChatMessage.objects.filter(
+            Q(sender=self.user, receiver_id=self.other_user_id) |
+            Q(sender_id=self.other_user_id, receiver=self.user)
+        ).delete()
