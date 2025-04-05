@@ -118,208 +118,145 @@ class ChangeEmailSerializer(serializers.Serializer):
     
 from .models import UserOTP
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+# users/serializers.py
+from django.contrib.auth import get_user_model
+from django.contrib.auth import password_validation
+from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.conf import settings
+# Use the base class alias for clarity if needed elsewhere
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer as BaseTokenObtainPairSerializer
+from rest_framework.exceptions import APIException
+# Import specific email class for HTML emails
+from django.core.mail import EmailMultiAlternatives
+from rest_framework import status
+from django.utils import timezone
+from .models import UserOTP # Import OTP model
 
+# Keep other serializers: UserSerializer, RegisterStudentSerializer, ProfileSerializer, etc.
+# ...
+
+User = get_user_model()
+
+class CustomTokenObtainPairSerializer(BaseTokenObtainPairSerializer):
+    """
+    Customizes the JWT token obtaining process to include 2FA via email OTP.
+    """
+
+    # Custom Exception to signal frontend that OTP is required
     class OTPAuthenticationFailed(APIException):
-        status_code = status.HTTP_200_OK
+        status_code = status.HTTP_200_OK # Return 200 OK because credentials *were* valid
         default_detail = 'OTP Required.'
         default_code = 'otp_required'
 
         def __init__(self, detail=None, code=None):
+            # Structure the response detail for the frontend
             self.detail = {
                 'detail': detail or self.default_detail,
                 'code': code or self.default_code,
                 'otp_required': True,
-                'message': 'OTP sent to your registered email.'
+                'message': 'OTP sent to your registered email.' # Informative message
             }
 
     @classmethod
     def get_token(cls, user):
+        # Standard method to generate JWT token pair
         token = super().get_token(user)
+        # Optional: Add custom claims to the token payload here if needed
+        # token['username'] = user.username
         return token
 
     def validate(self, attrs):
+        # --- Step 1: Validate Username/Password ---
+        # Call the parent's validate method first. It checks credentials
+        # and sets `self.user` if they are valid. It raises AuthenticationFailed
+        # if credentials are invalid, which we let propagate.
         try:
+            # Note: super().validate() returns token data if successful by default,
+            # but we don't use that return value directly here yet.
             super().validate(attrs)
         except Exception as e:
-            print(f"Credential validation failed: {e}")
-            raise
+            # Log credential failure for debugging if needed
+            # print(f"Credential validation failed during super().validate: {e}")
+            raise # Re-raise the original AuthenticationFailed or other validation error
 
-        if not self.user:
-            raise serializers.ValidationError("User validation failed unexpectedly.", code='authorization')
+        # --- Safety check (should have self.user if super().validate passed) ---
+        if not hasattr(self, 'user') or not self.user:
+             # This should ideally not happen if super().validate didn't raise error
+             raise serializers.ValidationError("User authentication failed unexpectedly.", code='authorization')
 
+        # --- Step 2: Check if 2FA is Enabled ---
         if self.user.is_two_factor_enabled:
-            print(f"DEBUG: 2FA enabled for {self.user.username}. OTP sent. Raising OTPAuthenticationFailed.")
+            print(f"DEBUG: 2FA is TRUE for {self.user.username}, attempting OTP process...")
+            otp_generated_and_sent = False # Flag to track success within try block
+
             try:
+                # --- Step 3a: Clear old OTPs and Create New ---
                 UserOTP.objects.filter(user=self.user).delete()
-                otp_instance = UserOTP.objects.create(user=self.user)
+                otp_instance = UserOTP.objects.create(user=self.user) # save() generates code/expiry
                 otp_code = otp_instance.otp_code
                 expiration_minutes = getattr(settings, 'OTP_EXPIRATION_MINUTES', 10)
                 current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z')
 
+                # --- Step 3b: Prepare and Send Email ---
                 subject = f"Your Login Verification Code for {settings.SITE_NAME or 'ITIHub'}"
                 sender = settings.DEFAULT_FROM_EMAIL
                 recipient = self.user.email
 
                 if not recipient:
+                    # If email is mandatory for 2FA, treat this as a configuration error
                     print(f"Cannot send OTP to {self.user.username}: No email configured.")
                     raise serializers.ValidationError("Cannot perform 2FA: No email address found for user.", code='authorization')
 
-                # HTML Email Template
+                # Use the HTML email template you provided
                 html_message = f"""
                 <!DOCTYPE html>
                 <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <title>{subject}</title>
-                    <style>
-                        body {{
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            line-height: 1.6;
-                            color: #333333;
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 20px;
-                            background-color: #f9f9f9;
-                        }}
-                        .email-container {{
-                            background-color: #ffffff;
-                            border-radius: 8px;
-                            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                            overflow: hidden;
-                        }}
-                        .header {{
-                            padding: 25px;
-                            text-align: center;
-                            background-color: #f0f4f8;
-                            border-bottom: 1px solid #e0e6ed;
-                        }}
-                        .logo {{
-                            max-height: 50px;
-                            margin-bottom: 15px;
-                        }}
-                        .content {{
-                            padding: 25px;
-                        }}
-                        .otp-code {{
-                            font-size: 32px;
-                            letter-spacing: 5px;
-                            text-align: center;
-                            margin: 25px 0;
-                            padding: 15px;
-                            background-color: #f8fafc;
-                            border: 1px dashed #e2e8f0;
-                            border-radius: 6px;
-                            color: #1e40af;
-                            font-weight: bold;
-                        }}
-                        .footer {{
-                            padding: 20px;
-                            text-align: center;
-                            font-size: 12px;
-                            color: #64748b;
-                            background-color: #f0f4f8;
-                            border-top: 1px solid #e0e6ed;
-                        }}
-                        .info-box {{
-                            background-color: #f8fafc;
-                            border-left: 4px solid #4f46e5;
-                            padding: 15px;
-                            margin: 20px 0;
-                            border-radius: 0 4px 4px 0;
-                        }}
-                        .divider {{
-                            height: 1px;
-                            background-color: #e2e8f0;
-                            margin: 20px 0;
-                        }}
-                    </style>
-                </head>
-                <body>
-                    <div class="email-container">
-                        <div class="header">
-                            <img src="{settings.LOGO_URL or 'https://via.placeholder.com/150x50'}" alt="{settings.SITE_NAME or 'App'}" class="logo">
-                            <h2 style="margin: 10px 0 0; color: #1e293b;">Login Verification</h2>
-                        </div>
-                        
-                        <div class="content">
-                            <p>Hello <strong>{self.user.username}</strong>,</p>
-                            
-                            <p>We received a login attempt for your {settings.SITE_NAME or 'account'} on {current_time}.</p>
-                            
-                            <div class="info-box">
-                                <p style="margin: 0;">For security reasons, please verify this login attempt using the following One-Time Password:</p>
-                            </div>
-                            
-                            <div class="otp-code">{otp_code}</div>
-                            
-                            <p>This code will expire in <strong>{expiration_minutes} minutes</strong>.</p>
-                            
-                            <div class="divider"></div>
-                            
-                            <p><strong>Security Tips:</strong></p>
-                            <ul>
-                                <li>Never share this code with anyone</li>
-                                <li>This code can only be used once</li>
-                                <li>If you didn't request this, please secure your account immediately</li>
-                            </ul>
-                        </div>
-                        
-                        <div class="footer">
-                            <p>&copy; {timezone.now().year} {settings.SITE_NAME or 'Our App'}. All rights reserved.</p>
-                            <p>This email was sent to {recipient} for account security purposes.</p>
-                        </div>
-                    </div>
-                </body>
+                <head> <meta charset="UTF-8"> <title>{subject}</title> <style> /* Your Email CSS Styles Here */ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }} .email-container {{ background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); overflow: hidden; }} .header {{ padding: 25px; text-align: center; background-color: #f0f4f8; border-bottom: 1px solid #e0e6ed; }} .logo {{ max-height: 50px; margin-bottom: 15px; }} .content {{ padding: 25px; }} .otp-code {{ font-size: 32px; letter-spacing: 5px; text-align: center; margin: 25px 0; padding: 15px; background-color: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 6px; color: #1e40af; font-weight: bold; }} .footer {{ padding: 20px; text-align: center; font-size: 12px; color: #64748b; background-color: #f0f4f8; border-top: 1px solid #e0e6ed; }} .info-box {{ background-color: #f8fafc; border-left: 4px solid #4f46e5; padding: 15px; margin: 20px 0; border-radius: 0 4px 4px 0; }} .divider {{ height: 1px; background-color: #e2e8f0; margin: 20px 0; }} </style> </head>
+                <body> <div class="email-container"> <div class="header"> <img src="{settings.LOGO_URL or 'https://via.placeholder.com/150x50'}" alt="{settings.SITE_NAME or 'App'}" class="logo"> <h2 style="margin: 10px 0 0; color: #1e293b;">Login Verification</h2> </div> <div class="content"> <p>Hello <strong>{self.user.username}</strong>,</p> <p>We received a login attempt for your {settings.SITE_NAME or 'account'} on {current_time}.</p> <div class="info-box"> <p style="margin: 0;">For security reasons, please verify this login attempt using the following One-Time Password:</p> </div> <div class="otp-code">{otp_code}</div> <p>This code will expire in <strong>{expiration_minutes} minutes</strong>.</p> <div class="divider"></div> <p><strong>Security Tips:</strong></p> <ul> <li>Never share this code with anyone</li> <li>This code can only be used once</li> <li>If you didn't request this, please secure your account immediately</li> </ul> </div> <div class="footer"> <p>&copy; {timezone.now().year} {settings.SITE_NAME or 'Our App'}. All rights reserved.</p> <p>This email was sent to {recipient} for account security purposes.</p> </div> </div> </body>
                 </html>
                 """
-                
-                # Plain text version
-                plain_message = f"""
-                Login Verification for {settings.SITE_NAME or 'ITIHub'}
-                
-                Hello {self.user.username},
-                
-                We received a login attempt for your account on {current_time}.
-                
-                Your One-Time Password is:
-                {otp_code}
-                
-                This code will expire in {expiration_minutes} minutes.
-                
-                Security Tips:
-                - Never share this code with anyone
-                - This code can only be used once
-                - If you didn't request this, please secure your account immediately
-                
-                © {timezone.now().year} {settings.SITE_NAME or 'Our App'}. All rights reserved.
-                """
 
-                # Send email with both HTML and plain text versions
-                msg = EmailMultiAlternatives(
-                    subject=subject,
-                    body=plain_message,
-                    from_email=sender,
-                    to=[recipient]
-                )
+                # Plain text version (keep for compatibility)
+                plain_message = f"""Login Verification for {settings.SITE_NAME or 'ITIHub'}... Your One-Time Password is: {otp_code} ...""" # Keep your full plain text version
+
+                # Send email
+                msg = EmailMultiAlternatives(subject, plain_message, sender, [recipient])
                 msg.attach_alternative(html_message, "text/html")
-                msg.send()
+                msg.send() # Use fail_silently=False by default
 
-                print(f"2FA enabled for {self.user.username}. OTP sent. Raising OTPAuthenticationFailed.")
-                raise self.OTPAuthenticationFailed()
+                # If email sending succeeded, mark flag
+                otp_generated_and_sent = True
+                print(f"DEBUG: OTP email supposedly sent to {recipient}.")
 
             except Exception as e:
+                # Catch ONLY errors from the OTP/Email process inside the try block
                 print(f"Error during OTP generation/sending for {self.user.username}: {e}")
+                # Raise the generic validation error only if this specific process fails
                 raise serializers.ValidationError("Could not process two-factor authentication request.", code='authorization')
 
+            # --- Step 4: Raise Custom Exception AFTER successful OTP process ---
+            # If the try block completed without errors, raise the exception to signal frontend
+            if otp_generated_and_sent:
+                print(f"DEBUG: OTP process successful for {self.user.username}. Raising OTPAuthenticationFailed.")
+                raise self.OTPAuthenticationFailed()
+            else:
+                # This case should theoretically not be reached if fail_silently=False
+                # unless the 'recipient' check failed and raised ValidationError earlier.
+                # But as a fallback:
+                 raise serializers.ValidationError("Failed to send OTP.", code='authorization')
+
         else:
-            print(f"2FA disabled for {self.user.username}. Generating tokens.")
+            # --- Step 5: 2FA Disabled - Return Tokens ---
+            print(f"DEBUG: 2FA is FALSE for {self.user.username}, generating tokens...")
             refresh = self.get_token(self.user)
             data = {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
+                # Optionally include user details if your frontend needs them on login
+                # 'user': UserSerializer(self.user).data
             }
-            return data
+            return data # Return token data directly
 
 class VerifyOTPSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
