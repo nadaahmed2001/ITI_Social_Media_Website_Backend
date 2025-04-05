@@ -12,6 +12,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
+import openai  # Import OpenAI library
+from .models import ChatBotMessage
+from .serializers import ChatBotMessageSerializer
+from rest_framework.permissions import IsAuthenticated
 
 # 🟢 View Group Chat Page
 def group_chat_view(request, group_id):
@@ -155,6 +159,43 @@ class EditMessageView(APIView):
             status=status.HTTP_200_OK
         )
 
+class EditGroupMessageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, group_id, message_id, *args, **kwargs):
+        # Get the group and ensure the user is a member
+        group = get_object_or_404(GroupChat, id=group_id, members=request.user)
+
+        # Get the message and ensure it belongs to the group
+        message = get_object_or_404(GroupMessage, id=message_id, group=group)
+
+        # Check if the authenticated user is the sender
+        if message.sender != request.user:
+            return Response(
+                {"error": "You are not authorized to edit this message."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get the new content from the request
+        new_content = request.data.get("content", "").strip()
+
+        # Validate the new content
+        if not new_content:
+            return Response(
+                {"error": "Message content cannot be empty."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update the message content and save it to the database
+        message.content = new_content
+        message.save()
+
+        # Return a success response
+        return Response(
+            {"message": "Group message updated successfully.", "updated_message": message.content},
+            status=status.HTTP_200_OK
+        )
+
 class DeleteMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -182,3 +223,45 @@ def delete_group_message(request, group_id, message_id):
         return Response({"error": "Group not found or you are not a member."}, status=status.HTTP_404_NOT_FOUND)
     except GroupMessage.DoesNotExist:
         return Response({"error": "Message not found in this group."}, status=status.HTTP_404_NOT_FOUND)
+
+class ChatBotView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        user_message = request.data.get('message', '').strip()
+
+        if not user_message:
+            return Response({"error": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # ITI-specific rule-based responses
+        iti_responses = {
+            "what is iti?": "ITI (Information Technology Institute) is a leading institute in IT training and education.",
+            "where is iti located?": "ITI has multiple branches across Egypt, including Smart Village, Mansoura, and Alexandria.",
+            "how to apply to iti?": "You can apply to ITI through their official website during the application period.",
+            # Add more rules here...
+        }
+
+        # Check if the message matches any predefined rule
+        bot_response = iti_responses.get(user_message.lower())
+        if bot_response:
+            # Save the conversation in the database
+            chatbot_message = ChatBotMessage.objects.create(
+                user=user,
+                message=user_message,
+                response=bot_response
+            )
+            serializer = ChatBotMessageSerializer(chatbot_message)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # If no rule matches, return a default response
+        return Response({"error": "I can only answer ITI-related questions."}, status=status.HTTP_400_BAD_REQUEST)
+
+class ChatBotMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        messages = ChatBotMessage.objects.filter(user=user).order_by('timestamp')
+        serializer = ChatBotMessageSerializer(messages, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

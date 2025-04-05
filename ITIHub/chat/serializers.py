@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GroupChat, GroupMessage, ChatMessage
+from .models import GroupChat, GroupMessage, ChatMessage, ChatBotMessage
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -28,3 +28,8 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ['id', 'message', 'timestamp', 'sender', 'receiver']
+
+class ChatBotMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatBotMessage
+        fields = ['id', 'user', 'message', 'response', 'timestamp']
