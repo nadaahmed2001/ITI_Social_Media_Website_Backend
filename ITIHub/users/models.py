@@ -25,7 +25,7 @@ class User(AbstractUser):
     # Fix for conflicts with Django’s default User model
     groups = models.ManyToManyField(Group, related_name="custom_user_groups", blank=True)
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions", blank=True)
-
+    
     def __str__(self):
         role = "Supervisor" if self.is_supervisor else "Student" if self.is_student else "User"
         return f"{self.username} ({role})"
