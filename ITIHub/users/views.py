@@ -26,6 +26,7 @@ from django.conf import settings
 from django.utils import timezone
 from .models import Skill
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.mail import EmailMultiAlternatives
 
 
 
@@ -127,32 +128,11 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return obj.user == request.user
 
-# class UserAccountAPI(APIView):
-    # permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
-    # parser_classes = [MultiPartParser, FormParser, JSONParser]
-
-    # def get(self, request):
-    #     # Get the logged-in user's profile
-    #     profile = request.user.profile
-    #     serializer = ProfileSerializer(profile)
-    #     return Response(serializer.data, status=status.HTTP_200_OK)
-
-    # def put(self, request):
-    #     # Get the logged-in user's profile
-    #     profile = request.user.profile
-    #     serializer = ProfileSerializer(profile, data=request.data, partial=True)
-
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data, status=status.HTTP_200_OK)
-        
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class UserAccountAPI(APIView):
     permission_classes = [IsAuthenticated]
     # --- Add Parsers to handle potential file uploads ---
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [JSONParser]
 
     def get(self, request):
         try:
@@ -162,19 +142,19 @@ class UserAccountAPI(APIView):
             serializer = ProfileSerializer(profile, context={'request': request}) # Pass context if needed by serializer
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
-             # Handle case where user exists but profile doesn't (shouldn't happen with signals)
-             return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+            # Handle case where user exists but profile doesn't (shouldn't happen with signals)
+            return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
         except AttributeError:
-             # Handle case where request.user doesn't have .profile (less likely for OneToOne)
-             return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # Handle case where request.user doesn't have .profile (less likely for OneToOne)
+            return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
         try:
             profile = request.user.profile # Get the profile instance to update
         except ObjectDoesNotExist:
-             return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
         except AttributeError:
-             return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Initialize serializer with the instance, request data (merged fields/files), and partial=True
         # ProfileSerializer now expects 'profile_image' file data if present
@@ -185,9 +165,10 @@ class UserAccountAPI(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         # Return validation errors (e.g., invalid image format, field errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
 # ========================================= User account change email - change password views ===================================================
 User = get_user_model()
-
 class ChangePasswordView(APIView):
     """
     Endpoint for changing the user's password.
@@ -210,31 +191,121 @@ class ChangePasswordView(APIView):
 
         # --- Send Password Change Notification Email ---
         try:
-            subject = f"Password Changed for Your Account on {settings.SITE_NAME or 'ITIHub'}" # Use SITE_NAME from settings if defined
-            # Add a timestamp for context
-            change_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z') # e.g., 2025-04-03 04:21:27 EET
+            subject = f"Password Changed for Your {settings.SITE_NAME} account"
+            change_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z')
             reset_password_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}/users/password-reset/"
-            message = (
+            support_email = settings.DEFAULT_FROM_EMAIL or 'support@example.com'
+            
+            html_message = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>{subject}</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }}
+                    .header {{
+                        text-align: center;
+                        padding-bottom: 20px;
+                        border-bottom: 1px solid #eee;
+                        margin-bottom: 20px;
+                    }}
+                    .logo {{
+                        max-width: 150px;
+                        margin-bottom: 15px;
+                    }}
+                    .content {{
+                        padding: 20px 0;
+                    }}
+                    .button {{
+                        display: inline-block;
+                        padding: 5px 20px;
+                        background-color: #4CAF50;
+                        color: white !important;
+                        text-decoration: none;
+                        border-radius: 4px;
+                        margin: 10px 0px 5px 5px;
+                    }}
+                    .footer {{
+                        margin-top: 30px;
+                        padding-top: 20px;
+                        border-top: 1px solid #eee;
+                        font-size: 12px;
+                        color: #777;
+                        text-align: center;
+                    }}
+                    .alert {{
+                        background-color: #f8f9fa;
+                        padding: 15px;
+                        border-left: 4px solid #dc3545;
+                        margin: 20px 0;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <img src="{settings.LOGO_URL}" alt="{settings.SITE_NAME or 'ITIHub'}" class="logo">
+                    <h2>Password Changed Successfully</h2>
+                </div>
+                
+                <div class="content">
+                    <p>Hello {user.username},</p>
+                    
+                    <p>This is a confirmation that the password for your {settings.SITE_NAME or 'account'} was successfully changed on <strong>{change_time}</strong>.</p>
+                    
+                    <div class="alert">
+                        <p><strong>Important Security Information:</strong></p>
+                        <p>If you did <strong>not</strong> initiate this password change, your account security may be compromised.</p>
+                    </div>
+                    
+                    <p>If this wasn't you, please take immediate action:</p>
+                    <ol>
+                        <li><a href="{reset_password_url}" class="button">Reset Your Password Now</a></li>
+                        <li> Contact our support team at <a href="mailto:{support_email}">{support_email}</a></li>
+                        <li> Check your account for any unauthorized activity</li>
+                    </ol>
+                    
+                    <p>If you did make this change, you can safely ignore this email.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>&copy; {timezone.now().year} {settings.SITE_NAME or 'ITIHub'}. All rights reserved.</p>
+                    <p>This email was sent to {user.email} because a password change was detected on your account.</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            plain_message = (
                 f"Hi {user.username},\n\n"
-                f"This is a confirmation that the password for your account was successfully changed at {change_time}.\n\n"
-                f"If you made this change, Ignore this email.\n\n"
-                f"If you did NOT change your password, please secure your account immediately by resetting your password "
-                f"and contact our support team.\n\n"
-                f"Reset Password: ({reset_password_url}) \n\n"
-                f"Thanks,\n{settings.SITE_NAME or 'ITIHub'}" # Customize signature
+                f"This is a confirmation that the password for your {settings.SITE_NAME } account was successfully changed at {change_time}.\n\n"
+                f"If you made this change, you can safely ignore this email.\n\n"
+                f"IF YOU DID NOT CHANGE YOUR PASSWORD:\n"
+                f"1. Reset your password immediately: {reset_password_url}\n"
+                f"2. Contact our support team at {support_email}\n"
+                f"3. Check your account for any unauthorized activity\n\n"
+                f"Thanks,\n{settings.SITE_NAME or 'ITIHub'} Team"
             )
+
             sender = settings.DEFAULT_FROM_EMAIL 
             recipient = user.email
 
             send_mail(
                 subject=subject,
-                message=message,
+                message=plain_message,
+                html_message=html_message,
                 from_email=sender,
                 recipient_list=[recipient],
                 fail_silently=False 
             )
             
-
         except Exception as e:
             print(f"ERROR: Failed to send password change notification email to {user.email}: {e}")
         
@@ -251,57 +322,145 @@ class ChangeEmailView(APIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data, context={'request': request})
-        # This automatically checks: password correct, emails match, new email format, new email not used by OTHERS
         serializer.is_valid(raise_exception=True)
 
         user = request.user
         new_email = serializer.validated_data['new_email']
 
-        # --- Email Verification Flow ---
         try:
-            # 1. Delete any previous pending requests for this user
+            # Delete any previous pending requests for this user
             EmailChangeRequest.objects.filter(user=user).delete()
 
-            # 2. Create a new request object (token and expiration set on save)
+            # Create a new request object
             change_request = EmailChangeRequest.objects.create(user=user, new_email=new_email)
             token = change_request.token
 
-            # 3. Construct Confirmation URL (using API endpoint)
-            # Uses reverse() to get the URL based on the URL pattern name
+            # Construct Confirmation URL
             relative_url = reverse('confirm-email-change', kwargs={'token': token})
-            # Ensure settings.BACKEND_BASE_URL ends WITHOUT a slash and relative_url STARTS with one
-            confirmation_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}{relative_url}" 
-
-            # --- Modify email message ---
-            subject = "Confirm Your Email Change"
-            link_tag = f'<a href="{confirmation_url}" target="_blank" rel="noopener noreferrer">Confirm Email Change</a>'
-            message = (
+            confirmation_url = f"{settings.BACKEND_BASE_URL.rstrip('/')}{relative_url}"
+            
+            # Email content
+            subject = f"Confirm Your Email Change for {settings.SITE_NAME or 'Your Account'}"
+            expiration_hours = settings.EMAIL_CHANGE_EXPIRATION_HOURS or 1
+            support_email = settings.SUPPORT_EMAIL or 'support@example.com'
+            
+            html_message = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>{subject}</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }}
+                    .header {{
+                        text-align: center;
+                        padding-bottom: 20px;
+                        border-bottom: 1px solid #eee;
+                        margin-bottom: 20px;
+                    }}
+                    .logo {{
+                        max-width: 150px;
+                        margin-bottom: 15px;
+                    }}
+                    .content {{
+                        padding: 20px 0;
+                    }}
+                    .button {{
+                        display: inline-block;
+                        padding: 12px 24px;
+                        background-color: #2563eb;
+                        color: white !important;
+                        text-decoration: none;
+                        border-radius: 4px;
+                        margin: 20px 0;
+                        font-weight: bold;
+                    }}
+                    .footer {{
+                        margin-top: 30px;
+                        padding-top: 20px;
+                        border-top: 1px solid #eee;
+                        font-size: 12px;
+                        color: #777;
+                        text-align: center;
+                    }}
+                    .alert {{
+                        background-color: #f8f9fa;
+                        padding: 15px;
+                        border-left: 4px solid #dc3545;
+                        margin: 20px 0;
+                    }}
+                    .code {{
+                        font-family: monospace;
+                        background-color: #f3f4f6;
+                        padding: 10px;
+                        border-radius: 4px;
+                        word-break: break-all;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <img src="{settings.LOGO_URL or 'https://via.placeholder.com/150'}" alt="{settings.SITE_NAME or 'ITIHub'}" class="logo">
+                    <h2>Confirm Your Email Change</h2>
+                </div>
+                
+                <div class="content">
+                    <p>Hello {user.username},</p>
+                    
+                    <p>We received a request to change the email address associated with your {settings.SITE_NAME or 'account'} from <strong>{user.email}</strong> to <strong>{new_email}</strong>.</p>
+                    
+                    <p style="text-align: center;">
+                        <a href="{confirmation_url}" class="button">Confirm Email Change</a>
+                    </p>
+                    
+                    <p>This link will expire in <strong>{expiration_hours} hour(s)</strong>.</p>
+                    
+                    <div class="alert">
+                        <p><strong>Important:</strong> If you didn't request this change, please:</p>
+                        <ol>
+                            <li>Secure your account by changing your password immediately</li>
+                            <li>Contact our support team at <a href="mailto:{support_email}">{support_email}</a></li>
+                        </ol>
+                    </div>
+                    
+                    <p>Alternatively, you can copy and paste this URL into your browser:</p>
+                    <div class="code">{confirmation_url}</div>
+                </div>
+                
+                <div class="footer">
+                    <p>&copy; {timezone.now().year} {settings.SITE_NAME or 'ITIHub'}. All rights reserved.</p>
+                    <p>This email was sent to {new_email} because an email change was requested for your account.</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            plain_message = (
                 f"Hi {user.username},\n\n"
-                f"Please click the link below to confirm changing your email address to {new_email}.\n\n"
-                # Use the link_tag here for a clickable link
-                f"{link_tag}\n\n"
-                f"Or copy and paste this URL into your browser:\n{confirmation_url}\n\n"
-                f"This link will expire in {settings.EMAIL_CHANGE_EXPIRATION_HOURS or 1} hour(s).\n\n"
-                f"If you did not request this change, please ignore this email.\n\n"
-                f"Thanks,\nYour Site Team"
-            )
-            sender = settings.DEFAULT_FROM_EMAIL
-
-            # Consider sending HTML email for better link formatting
-            from django.core.mail import EmailMultiAlternatives
-
-            html_message = (
-                f"<p>Hi {user.username},</p>"
-                f"<p>Please click the link below to confirm changing your email address to {new_email}.</p>"
-                f"<p>{link_tag}</p>"
-                f"Or copy and paste this URL into your browser:\n{confirmation_url}\n\n"
-                f"<p>This link will expire in {settings.EMAIL_CHANGE_EXPIRATION_HOURS or 1} hour(s).</p>"
-                f"<p>If you did not request this change, please ignore this email.</p>"
-                f"<p>Thanks,<br/>ITIHub Team</p>"
+                f"We received a request to change the email address associated with your {settings.SITE_NAME or 'account'} from {user.email} to {new_email}.\n\n"
+                f"Please click the following link to confirm this change:\n\n"
+                f"{confirmation_url}\n\n"
+                f"This link will expire in {expiration_hours} hour(s).\n\n"
+                f"IMPORTANT: If you didn't request this change, please:\n"
+                f"1. Secure your account by changing your password immediately\n"
+                f"2. Contact our support team at {support_email}\n\n"
+                f"Thanks,\n{settings.SITE_NAME or 'ITIHub'} Team"
             )
 
-            # Send both plain text and HTML
-            msg = EmailMultiAlternatives(subject, message, sender, [new_email])
+            # Send email
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[new_email]
+            )
             msg.attach_alternative(html_message, "text/html")
             msg.send()
 

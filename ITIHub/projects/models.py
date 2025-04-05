@@ -11,7 +11,7 @@ class Project(models.Model):
     contributors = models.ManyToManyField(Profile, related_name='contributed_projects', blank=True)
     title = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
-    featured_image = models.ImageField(upload_to='project_images/', null=True, blank=True)
+    featured_image = models.URLField(max_length=500, null=True, blank=True)
     demo_link = models.CharField(max_length=2000,null= True , blank=True)
     source_link = models.CharField(max_length=2000,null= True , blank=True)
     created = models.DateTimeField(auto_now_add=True)

@@ -251,9 +251,11 @@ EMAIL_HOST_USER = 'testiticommunity@gmail.com'
 EMAIL_HOST_PASSWORD = 'pzsquwhzxdpxjjzd'
 DEFAULT_FROM_EMAIL = 'testiticommunity@gmail.com'
 
+SUPPORT_EMAIL = "testiticommunity@gmail.com"
 FRONTEND_BASE_URL = 'http://localhost:5173' 
 BACKEND_BASE_URL = 'http://localhost:8000' 
-
+LOGO_URL = "https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png"
+SITE_NAME = "ITIHub"
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 

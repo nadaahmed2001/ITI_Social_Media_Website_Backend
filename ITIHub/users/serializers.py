@@ -31,7 +31,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    profile_image = serializers.ImageField(required=False, allow_null=True)
+    profile_picture = serializers.URLField(max_length=500, required=False, allow_null=True)
     class Meta:
         model = Profile
         fields = "__all__"
