@@ -29,6 +29,7 @@ class Batch(models.Model):
     program = models.ForeignKey(Program, on_delete=models.CASCADE)  # Link to Program
     track = models.ForeignKey(Track, on_delete=models.CASCADE)  # Link to Track
     created_at = models.DateTimeField(default=now)
+    active = models.BooleanField(default=True)  
 
     def save(self, *args, **kwargs):
         # Check if batch is new

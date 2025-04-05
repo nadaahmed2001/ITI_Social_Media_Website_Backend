@@ -50,43 +50,43 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         return super().destroy(request, *args, **kwargs)
 
 #  Like & Dislike Post (Toggle)
-class PostLikeDislikeView(APIView):
-    permission_classes = [IsAuthenticated]
+# class PostLikeDislikeView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pk, action):
-        post = get_object_or_404(Post, pk=pk)
+#     def post(self, request, pk, action):
+#         post = get_object_or_404(Post, pk=pk)
 
-        if action == "like":
-            post.toggle_like(request.user)
-            if post.author != request.user:  
-                Notification.objects.create(
-                    recipient=post.author,
-                    sender=request.user,
-                    notification_type="reaction",
-                    reaction_type="like", 
-                    related_content_type=ContentType.objects.get_for_model(post),
-                    related_object_id=post.id
-                )
+#         if action == "like":
+#             post.toggle_like(request.user)
+#             if post.author != request.user:  
+#                 Notification.objects.create(
+#                     recipient=post.author,
+#                     sender=request.user,
+#                     notification_type="reaction",
+#                     reaction_type="like", 
+#                     related_content_type=ContentType.objects.get_for_model(post),
+#                     related_object_id=post.id
+#                 )
 
-        elif action == "dislike":
-            post.toggle_dislike(request.user)
-            if post.author != request.user:
-                Notification.objects.create(
-                    recipient=post.author,
-                    sender=request.user,
-                    notification_type="reaction",
-                    reaction_type="dislike",
-                    related_content_type=ContentType.objects.get_for_model(post),
-                    related_object_id=post.id
-                )
+#         elif action == "dislike":
+#             post.toggle_dislike(request.user)
+#             if post.author != request.user:
+#                 Notification.objects.create(
+#                     recipient=post.author,
+#                     sender=request.user,
+#                     notification_type="reaction",
+#                     reaction_type="dislike",
+#                     related_content_type=ContentType.objects.get_for_model(post),
+#                     related_object_id=post.id
+#                 )
 
-        else:
-            return Response(
-                {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+#         else:
+#             return Response(
+#                 {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
 
-        return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
+#         return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
