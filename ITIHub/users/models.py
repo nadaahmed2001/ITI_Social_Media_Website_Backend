@@ -4,6 +4,8 @@ import uuid
 from django.conf import settings 
 from django.utils import timezone
 from datetime import timedelta
+import random # For OTP generation
+
 
 class User(AbstractUser):
     """
@@ -25,10 +27,14 @@ class User(AbstractUser):
     # Fix for conflicts with Django’s default User model
     groups = models.ManyToManyField(Group, related_name="custom_user_groups", blank=True)
     user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions", blank=True)
+    
+    is_two_factor_enabled = models.BooleanField(default=False)
+
 
     def __str__(self):
         role = "Supervisor" if self.is_supervisor else "Student" if self.is_student else "User"
-        return f"{self.username} ({role})"
+        two_fa = "(2FA)" if self.is_two_factor_enabled else ""
+        return f"{self.username} ({role}){two_fa}"
 
 
 
@@ -107,3 +113,25 @@ class EmailChangeRequest(models.Model):
 
     def __str__(self):
         return f"Email change request for {self.user.username} to {self.new_email}"
+    
+    
+# ============================================================== 2FA-OTP ========================================================================
+class UserOTP(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    otp_code = models.CharField(max_length=6) # Store plain text OTP (Hash recommended for higher security)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.pk: # Only on creation
+            # Generate OTP
+            self.otp_code = str(random.randint(100000, 999999)) # Simple 6-digit OTP
+            # Set expiration (e.g., 10 minutes from now)
+            self.expires_at = timezone.now() + timedelta(minutes=getattr(settings, 'OTP_EXPIRATION_MINUTES', 10))
+        super().save(*args, **kwargs)
+
+    def is_expired(self):
+        return timezone.now() >= self.expires_at
+
+    def __str__(self):
+        return f"OTP for {self.user.username} - Expires {self.expires_at.strftime('%Y-%m-%d %H:%M')}"

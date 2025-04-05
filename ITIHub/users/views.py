@@ -11,7 +11,8 @@ from .serializers import (  UserSerializer,
                             ProfileSerializer, 
                             SkillSerializer, 
                             ChangePasswordSerializer, 
-                            ChangeEmailSerializer)
+                            ChangeEmailSerializer,
+                            VerifyOTPSerializer)
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -27,6 +28,9 @@ from django.utils import timezone
 from .models import Skill
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMultiAlternatives
+from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
+
 
 
 
@@ -132,7 +136,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 class UserAccountAPI(APIView):
     permission_classes = [IsAuthenticated]
     # --- Add Parsers to handle potential file uploads ---
-    parser_classes = [JSONParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         try:
@@ -150,20 +154,15 @@ class UserAccountAPI(APIView):
 
     def put(self, request):
         try:
-            profile = request.user.profile # Get the profile instance to update
+            profile = request.user.profile
         except ObjectDoesNotExist:
-            return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
-        except AttributeError:
-            return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # Initialize serializer with the instance, request data (merged fields/files), and partial=True
-        # ProfileSerializer now expects 'profile_image' file data if present
+            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        # The ProfileSerializer's update method now handles saving the
+        # 'is_two_factor_enabled' field to the related User model.
         serializer = ProfileSerializer(profile, data=request.data, partial=True, context={'request': request})
-
         if serializer.is_valid():
-            serializer.save() # This handles saving text fields AND uploading image via Cloudinary storage
+            serializer.save() # Serializer's update handles user field
             return Response(serializer.data, status=status.HTTP_200_OK)
-        # Return validation errors (e.g., invalid image format, field errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 
@@ -626,3 +625,41 @@ class SkillAPI(APIView):
         skill.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+class VerifyOTPView(APIView):
+    """
+    Verifies the OTP submitted after initial login for 2FA enabled users.
+    Expects 'username' and 'otp_code'. Issues JWT tokens on success.
+    """
+    permission_classes = [AllowAny] # Allow access before full authentication
+    serializer_class = VerifyOTPSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        # is_valid runs the validate method in the serializer
+        serializer.is_valid(raise_exception=True)
+
+        # If validation passed, serializer includes 'user' and 'otp_instance'
+        user = serializer.validated_data['user']
+        otp_instance = serializer.validated_data['otp_instance']
+
+        # Clean up the used OTP
+        otp_instance.delete()
+
+        # Generate JWT tokens for the verified user
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+
+        # Optional: Add user details to response
+        user_serializer = UserSerializer(user) # Assuming you have a UserSerializer
+
+        return Response({
+            'refresh': str(refresh),
+            'access': access_token,
+            'user': user_serializer.data # Optional: send user details back
+        }, status=status.HTTP_200_OK)
+
+
+
+class CustomTokenObtainPairView(BaseTokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

@@ -12,11 +12,20 @@ from .views import (
                     ChangePasswordView,
                     ChangeEmailView,
                     ConfirmEmailChangeView,
+                    VerifyOTPView,
+                    CustomTokenObtainPairView,
+                    
                     )
 
 urlpatterns = [
     path("register/", RegisterStudentView.as_view(), name="register_student"),
-    path("login/", LoginView.as_view(), name="login"),
+    # path("login/", LoginView.as_view(), name="login"),
+    path("login/", CustomTokenObtainPairView.as_view(), name="login"), # <-- CORRECT VIEW NEEDED HERE
+
+    
+    path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+
+    
     path("logout/", LogoutView.as_view(), name="logout"),
 
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
