@@ -16,8 +16,11 @@ import openai  # Import OpenAI library
 from .models import ChatBotMessage
 from .serializers import ChatBotMessageSerializer
 from rest_framework.permissions import IsAuthenticated
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 # 🟢 View Group Chat Page
+@method_decorator(csrf_exempt, name="dispatch")
 def group_chat_view(request, group_id):
     group = get_object_or_404(GroupChat, id=group_id, members=request.user)
     is_admin = group.supervisors.filter(id=request.user.id).exists()
@@ -28,6 +31,7 @@ def group_chat_view(request, group_id):
     })
 
 # 🟢 User Chat Dashboard (Lists Group & Private Chats)
+@method_decorator(csrf_exempt, name="dispatch")
 class UserChatDashboardView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -46,17 +50,20 @@ class UserChatDashboardView(generics.ListAPIView):
         })
 
 # 🟢 Create/Retrieve Group Chats
+@method_decorator(csrf_exempt, name="dispatch")
 class GroupChatListCreateView(generics.ListCreateAPIView):
     queryset = GroupChat.objects.all()
     serializer_class = GroupChatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+@method_decorator(csrf_exempt, name="dispatch")
 class GroupChatDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = GroupChat.objects.all()
     serializer_class = GroupChatSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 # 🟢 Send/Retrieve Group Messages
+@method_decorator(csrf_exempt, name="dispatch")
 class GroupMessageListCreateView(generics.ListCreateAPIView):
     serializer_class = GroupMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -69,6 +76,7 @@ class GroupMessageListCreateView(generics.ListCreateAPIView):
         serializer.save(sender=self.request.user, group=group)
 
 # 🟢 Send/Retrieve Private Messages
+@method_decorator(csrf_exempt, name="dispatch")
 class ChatMessageListCreateView(generics.ListCreateAPIView):
     serializer_class = ChatMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -88,6 +96,7 @@ class ChatMessageListCreateView(generics.ListCreateAPIView):
         response.data['id'] = self.get_queryset().last().id
         return response
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PrivateChatUsersView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -103,6 +112,7 @@ class PrivateChatUsersView(APIView):
         return Response(user_data)
 
 # 🟢 Clear Group Chat Messages
+@method_decorator(csrf_exempt, name="dispatch")
 class ClearGroupChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -115,6 +125,7 @@ class ClearGroupChatView(APIView):
         return Response({"message": "Group chat cleared successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 # 🟢 Clear Private Chat Messages
+@method_decorator(csrf_exempt, name="dispatch")
 class ClearPrivateChatView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -125,6 +136,7 @@ class ClearPrivateChatView(APIView):
         return Response({"message": "Private chat cleared successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 # 🟢 Edit a Message
+@method_decorator(csrf_exempt, name="dispatch")
 class EditMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -159,6 +171,7 @@ class EditMessageView(APIView):
             status=status.HTTP_200_OK
         )
 
+@method_decorator(csrf_exempt, name="dispatch")
 class EditGroupMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -196,6 +209,7 @@ class EditGroupMessageView(APIView):
             status=status.HTTP_200_OK
         )
 
+@method_decorator(csrf_exempt, name="dispatch")
 class DeleteMessageView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -224,6 +238,7 @@ def delete_group_message(request, group_id, message_id):
     except GroupMessage.DoesNotExist:
         return Response({"error": "Message not found in this group."}, status=status.HTTP_404_NOT_FOUND)
 
+@method_decorator(csrf_exempt, name="dispatch")
 class ChatBotView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -257,6 +272,7 @@ class ChatBotView(APIView):
         # If no rule matches, return a default response
         return Response({"error": "I can only answer ITI-related questions."}, status=status.HTTP_400_BAD_REQUEST)
 
+@method_decorator(csrf_exempt, name="dispatch")
 class ChatBotMessagesView(APIView):
     permission_classes = [IsAuthenticated]
 

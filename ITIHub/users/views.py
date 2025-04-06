@@ -57,6 +57,7 @@ class RegisterStudentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
@@ -70,10 +71,16 @@ class LoginView(APIView):
             )
             if user:
                 refresh = RefreshToken.for_user(user)
+                # Add custom claims to the access token
+                access_token = refresh.access_token
+                access_token["is_student"] = user.is_student
+                access_token["is_supervisor"] = user.is_supervisor
+                access_token["user_id"] = user.id
+
                 return Response({
                     "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                    "user": UserSerializer(user).data
+                    "access": str(access_token),
+                    "user": UserSerializer(user).data  # This will still include is_student, is_supervisor
                 })
             return Response({"error": "Invalid Credentials"}, status=status.HTTP_400_BAD_REQUEST)
 
