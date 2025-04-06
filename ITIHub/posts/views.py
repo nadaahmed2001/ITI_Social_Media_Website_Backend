@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
-from .serializers import PostSerializer, CommentSerializer, ReactionSerializer
+from .serializers import PostSerializer, CommentSerializer, ReactionSerializer , EditCommentSerializer, DeleteCommentSerializer
 from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
@@ -182,5 +182,59 @@ class PostReactionsView(APIView):
         reactions = Reaction.objects.filter(post=post)
 
         # Serialize the reactions
+        serializer = ReactionSerializer(reactions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    ## Edit Comment API
+class CommentEditView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, post_id, comment_id):
+        comment = get_object_or_404(Comment, pk=comment_id, post__id=post_id)
+        # comment = get_object_or_404(Comment, pk=comment_id)
+
+        if comment.author != request.user:
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = EditCommentSerializer(comment, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    ## Delete Comment API
+class CommentDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, post_id, comment_id):
+        # Fetch the comment based on post_id and comment_id
+        comment = get_object_or_404(Comment, pk=comment_id, post__id=post_id)
+
+        # Check if the user is the author of the comment
+        if comment.author != request.user:
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Validate confirmation flag before deleting
+        serializer = DeleteCommentSerializer(data=request.data)
+        if serializer.is_valid():
+            # Confirm the deletion
+            if serializer.validated_data['confirmation']:
+                comment.delete()
+                return Response({'detail': 'Comment deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response({'detail': 'Confirmation required to delete the comment.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@method_decorator(csrf_exempt, name="dispatch")
+class CommentReactionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, comment_id):
+        """Retrieve all reactions for a specific comment"""
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        reactions = Reaction.objects.filter(comment=comment)
         serializer = ReactionSerializer(reactions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

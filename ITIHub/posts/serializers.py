@@ -58,7 +58,39 @@ class ReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reaction
         fields = ['id', 'user', 'reaction_type', 'post', 'comment', 'timestamp']
+## 
+class EditCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['comment']
+        extra_kwargs = {
+            'comment': {
+                'required': True,
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': "Comment cannot be empty"
+                }
+            }
+        }
 
+class DeleteCommentSerializer(serializers.Serializer):
+    confirmation = serializers.BooleanField(
+        required=True,
+        error_messages={
+            'required': 'Please confirm deletion',
+            'invalid': 'Confirmation must be a boolean value'
+        }
+    )
+
+
+class ReactionSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+    post = serializers.StringRelatedField()
+    comment = serializers.StringRelatedField()
+
+    class Meta:
+        model = Reaction
+        fields = ['id', 'user', 'reaction_type', 'post', 'comment', 'timestamp']
 
 # from rest_framework import serializers
 # from .models import Post, Comment, Attachment, Reaction

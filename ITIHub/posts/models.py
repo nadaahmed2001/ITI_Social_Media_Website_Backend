@@ -13,7 +13,7 @@ class Post(models.Model):
     created_on = models.DateTimeField(default=timezone.now)
     attachments = models.ManyToManyField(Attachment, blank=True)
 
-    def __str__(self):
+    def _str_(self):
         return f"Post by {self.author} on {self.created_on}"
 
     def reaction_counts(self):
@@ -26,7 +26,7 @@ class Comment(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     attachments = models.ManyToManyField(Attachment, blank=True)
 
-    def __str__(self):
+    def _str_(self):
         return f"Comment by {self.author} on {self.post}"
 
     def reaction_counts(self):
@@ -58,6 +58,6 @@ class Reaction(models.Model):
     class Meta:
         unique_together = ('user', 'post', 'comment')
 
-    def __str__(self):
+    def _str_(self):
         target = self.post if self.post else self.comment
         return f"{self.user} reacted {self.reaction_type} on {target}"

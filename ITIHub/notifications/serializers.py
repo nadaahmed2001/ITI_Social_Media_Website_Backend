@@ -3,7 +3,10 @@ from django.urls import reverse
 from .models import Notification
 from chat.models import ChatMessage, GroupMessage
 from batches.models import Batch
-from posts.models import Post, Comment  
+from posts.models import Post, Comment, Reaction
+from django.conf import settings
+
+
 
 class NotificationSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
@@ -31,11 +34,11 @@ class NotificationSerializer(serializers.ModelSerializer):
             "group_chat": GroupMessage,
             "batch_assignment": Batch,
             "batch_end": Batch,
-            "reaction": Post,
+            "reaction": Reaction,  # Ensure Reaction is handled correctly
             "comment": Comment,
         }
         model = model_map.get(obj.notification_type)
-        return model.objects.filter(id=obj.related_object_id).select_related().first() if model else None
+        return model.objects.filter(id=obj.related_object_id).first() if model else None
 
     def get_notification_text(self, obj):
         related_object = self.get_related_object(obj)
@@ -63,20 +66,29 @@ class NotificationSerializer(serializers.ModelSerializer):
                 return f"{sender_username} {reaction_type}d your post"
             return f"{sender_username} reacted to your post"
 
+        elif obj.notification_type == "comment":
+            comment_text = related_object.comment if related_object else "your post"
+            comment_author = related_object.author.username if related_object else "Unknown"
+            return f"{comment_author} commented on your post: '{comment_text}'"
+
         return "New notification"
-
-
 
     def get_notification_link(self, obj):
         related_object = self.get_related_object(obj)
+        base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
 
         if obj.notification_type == "batch_assignment" and related_object:
-            return reverse("batch-detail", kwargs={"batch_id": related_object.id})
+            return f"{base_url}/batches/{related_object.id}/"
 
         elif obj.notification_type in ["reaction", "comment"] and related_object:
-            return reverse("post-detail", kwargs={"post_id": related_object.id})
+            # Handle the correct link for reactions and comments
+            if obj.notification_type == "reaction":
+                return f"{base_url}/posts/{related_object.post.id}/reaction-{related_object.id}"
+            elif obj.notification_type == "comment":
+                return f"{base_url}/posts/{related_object.post.id}/comment-{related_object.id}"
+            return f"{base_url}/posts/{related_object.post.id}/"
 
         elif obj.notification_type == "follow":
-            return reverse("user-profile", kwargs={"username": obj.sender.username})
+            return f"{base_url}/profile/{obj.sender.username}/"
 
-        return None
+        return f"{base_url}/"  # Default fallback to homepage

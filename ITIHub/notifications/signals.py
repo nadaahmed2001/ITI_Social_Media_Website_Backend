@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Notification
+from users.models import Follow
 from chat.models import ChatMessage, GroupMessage
 from posts.models import Post, Comment, Reaction
 from django.contrib.auth import get_user_model
@@ -31,27 +32,40 @@ def notify_group_message(sender, instance, created, **kwargs):
                 recipient=member,
                 sender=instance.sender,
                 notification_type="group_chat",
-                related_object_id=instance.id
+                related_object_id=instance.id,
+                
             )
             for member in group_members
         ]
         Notification.objects.bulk_create(notifications)
 
-@receiver(post_save, sender=Post)
-def notify_followers_on_new_post(sender, instance, created, **kwargs):
+
+@receiver(post_save, sender=Follow)
+def notify_follow(sender, instance, created, **kwargs):
     if created:
-        followers = instance.author.followers.all()
-        notifications = [
-            Notification(
-                recipient=follower,
-                sender=instance.author,
-                notification_type="new_post",
-                related_content_type=ContentType.objects.get_for_model(instance),
-                related_object_id=instance.id
-            )
-            for follower in followers
-        ]
-        Notification.objects.bulk_create(notifications)
+        Notification.objects.create(
+            recipient=instance.following, 
+            sender=instance.follower,  
+            notification_type="follow", 
+            related_content_type=ContentType.objects.get_for_model(instance),
+            related_object_id=instance.id
+        )
+
+# @receiver(post_save, sender=Post)
+# def notify_followers_on_new_post(sender, instance, created, **kwargs):
+#     if created:
+#         followers = instance.author.followers.all()
+#         notifications = [
+#             Notification(
+#                 recipient=follower,
+#                 sender=instance.author,
+#                 notification_type="new_post",
+#                 related_content_type=ContentType.objects.get_for_model(instance),
+#                 related_object_id=instance.id
+#             )
+#             for follower in followers
+#         ]
+#         Notification.objects.bulk_create(notifications)
 
 @receiver(post_save, sender=Comment)
 def notify_post_author_on_comment(sender, instance, created, **kwargs):
@@ -92,7 +106,6 @@ def notify_mentioned_users(sender, instance, created, **kwargs):
             for user in mentioned_users if user != instance.author
         ]
         Notification.objects.bulk_create(notifications)
-
 
 
 
