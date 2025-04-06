@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from .models import Post, Comment, Reaction
-from .serializers import PostSerializer, CommentSerializer, ReactionSerializer
+from .serializers import PostSerializer, CommentSerializer, ReactionSerializer , EditCommentSerializer, DeleteCommentSerializer
 from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
@@ -13,6 +13,8 @@ from users.permissions import IsStudentOrSupervisor
 from notifications.models import Notification
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 
 class PostListCreateView(generics.ListCreateAPIView):
@@ -29,6 +31,7 @@ class PostListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
 
+@method_decorator(csrf_exempt, name="dispatch")
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
@@ -47,43 +50,43 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         return super().destroy(request, *args, **kwargs)
 
 #  Like & Dislike Post (Toggle)
-class PostLikeDislikeView(APIView):
-    permission_classes = [IsAuthenticated]
+# class PostLikeDislikeView(APIView):
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pk, action):
-        post = get_object_or_404(Post, pk=pk)
+#     def post(self, request, pk, action):
+#         post = get_object_or_404(Post, pk=pk)
 
-        if action == "like":
-            post.toggle_like(request.user)
-            if post.author != request.user:  
-                Notification.objects.create(
-                    recipient=post.author,
-                    sender=request.user,
-                    notification_type="reaction",
-                    reaction_type="like", 
-                    related_content_type=ContentType.objects.get_for_model(post),
-                    related_object_id=post.id
-                )
+#         if action == "like":
+#             post.toggle_like(request.user)
+#             if post.author != request.user:  
+#                 Notification.objects.create(
+#                     recipient=post.author,
+#                     sender=request.user,
+#                     notification_type="reaction",
+#                     reaction_type="like", 
+#                     related_content_type=ContentType.objects.get_for_model(post),
+#                     related_object_id=post.id
+#                 )
 
-        elif action == "dislike":
-            post.toggle_dislike(request.user)
-            if post.author != request.user:
-                Notification.objects.create(
-                    recipient=post.author,
-                    sender=request.user,
-                    notification_type="reaction",
-                    reaction_type="dislike",
-                    related_content_type=ContentType.objects.get_for_model(post),
-                    related_object_id=post.id
-                )
+#         elif action == "dislike":
+#             post.toggle_dislike(request.user)
+#             if post.author != request.user:
+#                 Notification.objects.create(
+#                     recipient=post.author,
+#                     sender=request.user,
+#                     notification_type="reaction",
+#                     reaction_type="dislike",
+#                     related_content_type=ContentType.objects.get_for_model(post),
+#                     related_object_id=post.id
+#                 )
 
-        else:
-            return Response(
-                {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+#         else:
+#             return Response(
+#                 {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
 
-        return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
+#         return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
@@ -110,6 +113,8 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({"error": "You are not authorized to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
+
+@method_decorator(csrf_exempt, name="dispatch")
 class AddReaction(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -135,6 +140,7 @@ class AddReaction(APIView):
         return Response({"message": "Reaction added successfully"}, status=status.HTTP_201_CREATED)
 
 #   RemoveReaction API
+@method_decorator(csrf_exempt, name="dispatch")
 class RemoveReaction(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -150,7 +156,8 @@ class RemoveReaction(APIView):
             return Response({"error": "Invalid target"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"success": True}, status=status.HTTP_200_OK)
-    
+
+@method_decorator(csrf_exempt, name="dispatch")
 class ListCommentsView(generics.ListAPIView):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
@@ -159,7 +166,7 @@ class ListCommentsView(generics.ListAPIView):
         # Get the post using the 'post_id' in the URL
         post_id = self.kwargs['post_id']
         return Comment.objects.filter(post_id=post_id).order_by('-created_on')  # Assuming you have a 'created_on' field
-    
+@method_decorator(csrf_exempt, name="dispatch")
 class PostReactionsView(APIView):
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
     
@@ -175,5 +182,59 @@ class PostReactionsView(APIView):
         reactions = Reaction.objects.filter(post=post)
 
         # Serialize the reactions
+        serializer = ReactionSerializer(reactions, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    ## Edit Comment API
+class CommentEditView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, post_id, comment_id):
+        comment = get_object_or_404(Comment, pk=comment_id, post__id=post_id)
+        # comment = get_object_or_404(Comment, pk=comment_id)
+
+        if comment.author != request.user:
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = EditCommentSerializer(comment, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    ## Delete Comment API
+class CommentDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, post_id, comment_id):
+        # Fetch the comment based on post_id and comment_id
+        comment = get_object_or_404(Comment, pk=comment_id, post__id=post_id)
+
+        # Check if the user is the author of the comment
+        if comment.author != request.user:
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Validate confirmation flag before deleting
+        serializer = DeleteCommentSerializer(data=request.data)
+        if serializer.is_valid():
+            # Confirm the deletion
+            if serializer.validated_data['confirmation']:
+                comment.delete()
+                return Response({'detail': 'Comment deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response({'detail': 'Confirmation required to delete the comment.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@method_decorator(csrf_exempt, name="dispatch")
+class CommentReactionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, comment_id):
+        """Retrieve all reactions for a specific comment"""
+        try:
+            comment = Comment.objects.get(id=comment_id)
+        except Comment.DoesNotExist:
+            return Response({"error": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        reactions = Reaction.objects.filter(comment=comment)
         serializer = ReactionSerializer(reactions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -18,6 +18,8 @@ from .serializers import DepartmentSerializer, StudentBatchSerializer
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 import csv
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 
 
@@ -27,6 +29,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
 
+@method_decorator(csrf_exempt, name="dispatch")
 class ProgramViewSet(viewsets.ModelViewSet):
     serializer_class = ProgramSerializer
     permission_classes = [IsAuthenticated]
@@ -57,17 +60,17 @@ class TrackViewSet(viewsets.ModelViewSet):
         return Track.objects.filter(program__in=programs)
 
 
+@method_decorator(csrf_exempt, name="dispatch")
 class BatchViewSet(viewsets.ModelViewSet):
     serializer_class = BatchSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        supervisor = self.request.user  # Get logged-in supervisor
-
-        # Get the department where the supervisor is assigned
+        supervisor = self.request.user
         department = Department.objects.filter(supervisor=supervisor).first()
+        
         if not department:
-            return Batch.objects.none()  # Return empty queryset if supervisor has no department
+            return Batch.objects.none()  # Return empty queryset if no department
 
         # Get batches only for programs in this department
         batches = Batch.objects.filter(program__department=department)
@@ -81,6 +84,14 @@ class BatchViewSet(viewsets.ModelViewSet):
         track_id = self.request.query_params.get("track_id")
         if track_id:
             batches = batches.filter(track_id=track_id)
+
+        # Filter by batch status if provided
+        status = self.request.query_params.get("status")
+        if status:
+            if status == "active":
+                batches = batches.filter(active=True)
+            elif status == "ended":
+                batches = batches.filter(active=False)
 
         return batches
 
