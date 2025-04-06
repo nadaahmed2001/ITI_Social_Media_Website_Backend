@@ -39,7 +39,8 @@ class Batch(models.Model):
             # Create a group chat for the batch with the supervisor as the admin
             group_chat = GroupChat.objects.create(name=f"Batch {self.name} Chat")
             group_chat.supervisors.add(self.supervisor)  # Add supervisor as admin
-
+            # group_chat.batch = self  # Add the relationship between Batch and GroupChat (san)
+            # group_chat.save()
     def __str__(self):
         return f"{self.name} - {self.track.name} - {self.program.name}"
 

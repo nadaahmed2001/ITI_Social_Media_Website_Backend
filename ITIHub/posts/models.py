@@ -13,7 +13,7 @@ class Post(models.Model):
     created_on = models.DateTimeField(default=timezone.now)
     attachments = models.ManyToManyField(Attachment, blank=True)
 
-    def __str__(self):
+    def _str_(self):
         return f"Post by {self.author} on {self.created_on}"
 
     def reaction_counts(self):
@@ -26,20 +26,28 @@ class Comment(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     attachments = models.ManyToManyField(Attachment, blank=True)
 
-    def __str__(self):
+    def _str_(self):
         return f"Comment by {self.author} on {self.post}"
 
     def reaction_counts(self):
         return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
 
 class Reaction(models.Model):
+    # REACTIONS = [
+    #     ("like", "Like"),
+    #     ("love", "Love"),
+    #     ("haha", "Haha"),
+    #     ("wow", "Wow"),
+    #     ("sad", "Sad"),
+    #     ("angry", "Angry"),
+    # ]
     REACTIONS = [
-        ("like", "Like"),
-        ("love", "Love"),
-        ("haha", "Haha"),
-        ("wow", "Wow"),
-        ("sad", "Sad"),
-        ("angry", "Angry"),
+        ('Like', 'Like'),
+        ('Love', 'Love'),
+        ('Celebrate', 'Celebrate'),
+        ('Laugh', 'Laugh'),
+        ('Insightful', 'Insightful'),
+        ('Support', 'Support'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True)
@@ -50,6 +58,6 @@ class Reaction(models.Model):
     class Meta:
         unique_together = ('user', 'post', 'comment')
 
-    def __str__(self):
+    def _str_(self):
         target = self.post if self.post else self.comment
         return f"{self.user} reacted {self.reaction_type} on {target}"
