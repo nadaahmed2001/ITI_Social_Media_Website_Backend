@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     "projects",
     'django_extensions',
     "rest_framework", 
-    
+    "chat",
     "rest_framework.authtoken",
     'rest_framework_simplejwt',
     'corsheaders',
