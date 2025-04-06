@@ -45,7 +45,7 @@ class Reaction(models.Model):
         ('Like', 'Like'),
         ('Love', 'Love'),
         ('Celebrate', 'Celebrate'),
-        ('Laugh', 'Laugh'),
+        ('funny', 'funny'),
         ('Insightful', 'Insightful'),
         ('Support', 'Support'),
     ]
