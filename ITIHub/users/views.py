@@ -208,7 +208,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return obj.user == request.user
 
-
+@method_decorator(csrf_exempt, name="dispatch")
 class UserAccountAPI(APIView):
     permission_classes = [IsAuthenticated]
     # --- Add Parsers to handle potential file uploads ---

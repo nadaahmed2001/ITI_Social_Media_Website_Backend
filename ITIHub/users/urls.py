@@ -53,6 +53,9 @@ urlpatterns = [
     path('change-email/', ChangeEmailView.as_view(), name='change-email'),
     path('confirm-email-change/<uuid:token>/', ConfirmEmailChangeView.as_view(), name='confirm-email-change'),
 
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+
 ]
 
 
