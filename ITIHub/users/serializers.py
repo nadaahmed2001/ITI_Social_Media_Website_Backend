@@ -3,16 +3,16 @@ from django.contrib.auth.password_validation import validate_password
 from .models import User
 from batches.models import StudentBatch
 from users.models import Profile, Skill
-from django.contrib.auth import get_user_model
-from django.contrib.auth import password_validation
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer as BaseTokenObtainPairSerializer
 from rest_framework.exceptions import APIException
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from rest_framework import status
 from django.utils import timezone
-from django.core.mail import EmailMultiAlternatives
+from .models import UserOTP
 
 from django.contrib.auth.tokens import default_token_generator
 
@@ -62,6 +62,20 @@ class SkillSerializer(serializers.ModelSerializer):
         model = Skill
         fields = '__all__'
         
+
+#reset password serializers
+class PasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class SetNewPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True, validators=[validate_password])
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError("Passwords do not match")
+        return data
+
 User = get_user_model()
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -121,19 +135,7 @@ class ChangeEmailSerializer(serializers.Serializer):
 from .models import UserOTP
 
 # users/serializers.py
-from django.contrib.auth import get_user_model
-from django.contrib.auth import password_validation
-from rest_framework import serializers
-from django.core.exceptions import ValidationError as DjangoValidationError
-from django.conf import settings
-# Use the base class alias for clarity if needed elsewhere
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer as BaseTokenObtainPairSerializer
-from rest_framework.exceptions import APIException
-# Import specific email class for HTML emails
-from django.core.mail import EmailMultiAlternatives
-from rest_framework import status
-from django.utils import timezone
-from .models import UserOTP # Import OTP model
+
 
 # Keep other serializers: UserSerializer, RegisterStudentSerializer, ProfileSerializer, etc.
 # ...

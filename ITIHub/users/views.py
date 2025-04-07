@@ -10,7 +10,7 @@ from .serializers import (  UserSerializer,
                             RegisterStudentSerializer, 
                             LoginSerializer, 
                             ProfileSerializer, 
-                            SkillSerializer, 
+                            SkillSerializer, PasswordResetSerializer, SetNewPasswordSerializer, 
                             ChangePasswordSerializer, 
                             ChangeEmailSerializer,
                             VerifyOTPSerializer)
@@ -18,13 +18,25 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+import secrets
+from datetime import timedelta
+from django.utils import timezone
+from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+
+
 from django.contrib.auth import get_user_model
 from django.db import transaction 
 from .serializers import ChangePasswordSerializer, ChangeEmailSerializer
 from .models import Profile
-from django.urls import reverse
-from django.core.mail import send_mail
-from django.conf import settings
+
+from djangofrom django.urls import reverse
+from django.core.mail import send_mail.conf import settings
 from django.utils import timezone
 from .models import Skill
 from django.core.exceptions import ObjectDoesNotExist
@@ -196,6 +208,7 @@ class PasswordResetConfirmView(APIView):
 
 
 
+# ===============================================================================================================================================
 # ======================================================= Profile & Skills Views ================================================================
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
@@ -207,7 +220,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return True
         return obj.user == request.user
 
-
+@method_decorator(csrf_exempt, name="dispatch")
 class UserAccountAPI(APIView):
     permission_classes = [IsAuthenticated]
     # --- Add Parsers to handle potential file uploads ---

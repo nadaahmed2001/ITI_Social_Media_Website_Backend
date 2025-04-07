@@ -6,7 +6,9 @@ from .views import (
                     LogoutView, 
                     UserProfileView, 
                     AllProfilesAPI, 
-                    UserProfileAPI, 
+                    UserProfileAPI,
+                    PasswordResetRequestView, 
+                    PasswordResetConfirmView ,
                     SkillAPI, 
                     UserAccountAPI,
                     ChangePasswordView,
@@ -17,6 +19,9 @@ from .views import (
                     PasswordResetRequestView,
                     PasswordResetConfirmView,
                     )
+=========
+from .views import RegisterStudentView, LoginView, LogoutView, UserProfileView, AllProfilesAPI, UserProfileAPI, SkillAPI, PasswordResetRequestView,  PasswordResetConfirmView ,UserAccountAPI
+>>>>>>>>> Temporary merge branch 2
 
 urlpatterns = [
     path("register/", RegisterStudentView.as_view(), name="register_student"),
@@ -49,13 +54,9 @@ urlpatterns = [
     path('change-email/', ChangeEmailView.as_view(), name='change-email'),
     path('confirm-email-change/<uuid:token>/', ConfirmEmailChangeView.as_view(), name='confirm-email-change'),
 
-    path('skills/', SkillAPI.as_view(), name='get_all_skills_api'),  # For getting all skills
-    path('skills/<uuid:pk>/', SkillAPI.as_view(), name='skill_api'),  # For getting, updating, and deleting a specific skill
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 
-
-    #reset password urls
-    path("password-reset/", PasswordResetRequestView.as_view(), name="password-reset"),
-    path("password-reset-confirm/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
 ]
 
 
