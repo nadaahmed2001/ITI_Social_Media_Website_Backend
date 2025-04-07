@@ -14,7 +14,8 @@ from .views import (
                     ConfirmEmailChangeView,
                     VerifyOTPView,
                     CustomTokenObtainPairView,
-                    
+                    PasswordResetRequestView,
+                    PasswordResetConfirmView,
                     )
 
 urlpatterns = [
