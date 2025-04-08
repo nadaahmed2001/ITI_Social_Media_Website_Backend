@@ -7,7 +7,6 @@ from posts.models import Post, Comment, Reaction
 from django.conf import settings
 
 
-
 class NotificationSerializer(serializers.ModelSerializer):
     sender = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
@@ -29,16 +28,18 @@ class NotificationSerializer(serializers.ModelSerializer):
         return "read" if obj.is_read else "unread"
 
     def get_related_object(self, obj):
-        model_map = {
-            "chat": ChatMessage,
-            "group_chat": GroupMessage,
-            "batch_assignment": Batch,
-            "batch_end": Batch,
-            "reaction": Reaction,  # Ensure Reaction is handled correctly
-            "comment": Comment,
-        }
-        model = model_map.get(obj.notification_type)
-        return model.objects.filter(id=obj.related_object_id).first() if model else None
+        if not hasattr(obj, "_cached_related_object"):
+            model_map = {
+                "chat": ChatMessage,
+                "group_chat": GroupMessage,
+                "batch_assignment": Batch,
+                "batch_end": Batch,
+                "reaction": Reaction,
+                "comment": Comment,
+            }
+            model = model_map.get(obj.notification_type)
+            obj._cached_related_object = model.objects.filter(id=obj.related_object_id).first() if model else None
+        return obj._cached_related_object
 
     def get_notification_text(self, obj):
         related_object = self.get_related_object(obj)
@@ -62,9 +63,15 @@ class NotificationSerializer(serializers.ModelSerializer):
 
         elif obj.notification_type == "reaction":
             reaction_type = getattr(obj, "reaction_type", None)
-            if reaction_type:
+            reaction = self.get_related_object(obj)
+
+            if reaction and getattr(reaction, "post", None):
                 return f"{sender_username} {reaction_type}d your post"
-            return f"{sender_username} reacted to your post"
+            elif reaction and getattr(reaction, "comment", None):
+                return f"{sender_username} {reaction_type}d your comment"
+
+            return f"{sender_username} reacted"
+
 
         elif obj.notification_type == "comment":
             comment_text = related_object.comment if related_object else "your post"
@@ -75,20 +82,32 @@ class NotificationSerializer(serializers.ModelSerializer):
 
     def get_notification_link(self, obj):
         related_object = self.get_related_object(obj)
-        base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
+        frontend_base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
 
-        if obj.notification_type == "batch_assignment" and related_object:
-            return f"{base_url}/batches/{related_object.id}/"
+        if not related_object:
+            return f"{frontend_base_url}/"
 
-        elif obj.notification_type in ["reaction", "comment"] and related_object:
-            # Handle the correct link for reactions and comments
-            if obj.notification_type == "reaction":
-                return f"{base_url}/posts/{related_object.post.id}/reaction-{related_object.id}"
-            elif obj.notification_type == "comment":
-                return f"{base_url}/posts/{related_object.post.id}/comment-{related_object.id}"
-            return f"{base_url}/posts/{related_object.post.id}/"
+        if obj.notification_type == "batch_assignment":
+            return f"{frontend_base_url}/batches/{related_object.id}/"
 
-        elif obj.notification_type == "follow":
-            return f"{base_url}/profile/{obj.sender.username}/"
+        elif obj.notification_type == "reaction":
+            if hasattr(related_object, "post") and related_object.post:
+                return f"{frontend_base_url}/posts/{related_object.post.id}/reactions/"
+            elif hasattr(related_object, "comment") and related_object.comment:
+                # Check if comment has a post associated with it
+                if hasattr(related_object.comment, "post") and related_object.comment.post:
+                    return f"{frontend_base_url}/posts/{related_object.comment.post.id}/comment/{related_object.comment.id}/reactions/"
+                else:
+                    return f"{frontend_base_url}/posts/{related_object.comment.id}/reactions/"
+            return f"{frontend_base_url}/"
 
-        return f"{base_url}/"  # Default fallback to homepage
+        elif obj.notification_type == "comment":
+            if hasattr(related_object, "post") and related_object.post:
+                return f"{frontend_base_url}/posts/{related_object.post.id}/comment/{related_object.id}"
+
+        elif obj.notification_type == "follow" and obj.sender:
+            return f"{frontend_base_url}/profile/{obj.sender.username}/"
+
+        return f"{frontend_base_url}/"
+
+

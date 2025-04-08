@@ -1,62 +1,39 @@
-from .models import User
-from django.contrib.auth import authenticate
+from .models import User, Profile, EmailChangeRequest, Skill
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import Profile, EmailChangeRequest
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import (  UserSerializer, 
-                            RegisterStudentSerializer, 
-                            LoginSerializer, 
-                            ProfileSerializer, 
-                            SkillSerializer, PasswordResetSerializer, SetNewPasswordSerializer, 
-                            ChangePasswordSerializer, 
-                            ChangeEmailSerializer,
-                            VerifyOTPSerializer)
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
-from django.utils.crypto import get_random_string
-import secrets
-from datetime import timedelta
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
-
-
-from django.contrib.auth import get_user_model
-from django.db import transaction 
-from .serializers import ChangePasswordSerializer, ChangeEmailSerializer
-from .models import Profile
-
-from djangofrom django.urls import reverse
-from django.core.mail import send_mail.conf import settings
-from django.utils import timezone
-from .models import Skill
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import EmailMultiAlternatives
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
-from .serializers import CustomTokenObtainPairSerializer
-
-
-
-
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.utils.crypto import get_random_string
-import secrets
-from datetime import timedelta
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
+from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
+from django.urls import reverse
+from django.utils import timezone
+from datetime import timedelta
+from .serializers import (
+    UserSerializer,
+    RegisterStudentSerializer,
+    LoginSerializer,
+    ProfileSerializer,
+    SkillSerializer,
+    PasswordResetSerializer,
+    SetNewPasswordSerializer,
+    ChangePasswordSerializer,
+    ChangeEmailSerializer,
+    VerifyOTPSerializer,
+    CustomTokenObtainPairSerializer,
+)
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):

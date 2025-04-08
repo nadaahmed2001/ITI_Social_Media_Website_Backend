@@ -18,10 +18,9 @@ from .views import (
                     CustomTokenObtainPairView,
                     PasswordResetRequestView,
                     PasswordResetConfirmView,
+                
                     )
-=========
-from .views import RegisterStudentView, LoginView, LogoutView, UserProfileView, AllProfilesAPI, UserProfileAPI, SkillAPI, PasswordResetRequestView,  PasswordResetConfirmView ,UserAccountAPI
->>>>>>>>> Temporary merge branch 2
+
 
 urlpatterns = [
     path("register/", RegisterStudentView.as_view(), name="register_student"),

@@ -122,6 +122,7 @@ def notify_reaction(sender, instance, created, **kwargs):
                 related_object_id=instance.id
             )
         elif instance.comment and instance.comment.author != instance.user:
+            print("✅ Reaction on comment: ", instance)
             Notification.objects.create(
                 recipient=instance.comment.author,
                 sender=instance.user,
