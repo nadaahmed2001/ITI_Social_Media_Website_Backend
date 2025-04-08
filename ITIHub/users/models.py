@@ -59,7 +59,7 @@ class User(AbstractUser):
     def __str__(self):
         role = "Supervisor" if self.is_supervisor else "Student" if self.is_student else "User"
         two_fa = "(2FA)" if self.is_two_factor_enabled else ""
-        return f"{self.username} ({role}){two_fa}"
+        return f"{self.username} ({role})"
 
 
 

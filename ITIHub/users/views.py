@@ -34,6 +34,7 @@ from .serializers import (
     VerifyOTPSerializer,
     CustomTokenObtainPairSerializer,
 )
+from django.conf import settings
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
