@@ -79,6 +79,7 @@ class LoginView(APIView):
 
     @csrf_exempt
     def post(self, request):
+        print("Inside POST in login view")
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
             user = authenticate(
@@ -93,6 +94,8 @@ class LoginView(APIView):
                 access_token["is_supervisor"] = user.is_supervisor
                 access_token["user_id"] = user.id
 
+                print("Access Token Payload:", access_token)  # Debugging statement
+                    
                 return Response({
                     "refresh": str(refresh),
                     "access": str(access_token),
