@@ -11,7 +11,6 @@ class User(AbstractUser):
     - Role-based flags (`is_student`, `is_supervisor`) for easy permission checks.
     """
     phone = models.CharField(max_length=15, unique=True, null=True, blank=True)
-    profile_picture = models.ImageField(upload_to="profile_pics/", blank=True, null=True) 
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Role-based flags
@@ -62,7 +61,7 @@ class Profile(models.Model):
     location = models.CharField(max_length=200, blank=True, null=True)
     headline = models.CharField(max_length=200, blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
-    profile_image = models.ImageField(default='profiles/user-default.png', upload_to="profile_pics/", blank=True, null=True)   # import the default image  static -> images -> profiles -> user-default.png
+    profile_picture = models.URLField(max_length=500, null=True, blank=True)
     website_url = models.CharField(max_length=200, blank=True, null=True)  # portfolio_website
     twitter_url = models.CharField(max_length=200, blank=True, null=True)
     youtube_url = models.CharField(max_length=200, blank=True, null=True)

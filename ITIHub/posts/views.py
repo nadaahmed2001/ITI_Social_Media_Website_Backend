@@ -22,97 +22,128 @@ from django.core.exceptions import PermissionDenied
 
 
 
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 10 # Number of posts per page (match frontend ITEMS_PER_PAGE)
-    page_size_query_param = 'page_size'
-    max_page_size = 50 # Max items per page client can request
+class StandardResultsSetPagination(PageNumberPagination): page_size = 10; page_size_query_param = 'page_size'; max_page_size = 30
+class CommentResultsSetPagination(PageNumberPagination): page_size = 10; page_size_query_param = 'page_size'; max_page_size = 50 # Increased comment page size
+class ReplyResultsSetPagination(PageNumberPagination): page_size = 5; page_size_query_param = 'page_size'; max_page_size = 20
 
-
-@method_decorator(csrf_exempt, name="dispatch")
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [JSONParser] # JSON only
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        sort = self.request.query_params.get('sort', 'recent')
         queryset = Post.objects.annotate(
-            total_reactions=Count('reaction'),
+            total_reactions=Count('reaction_set'), # Use related_name
             total_comments=Count('comments')
-        )
-
-        if sort == 'recent':
-            queryset = queryset.order_by('-created_on')
-        elif sort == 'relevant':
-            queryset = queryset.order_by('-total_reactions', '-total_comments')
-
+        ).select_related('author__profile').prefetch_related('attachments') # Optimize fetches
+        # Sorting
+        sort = self.request.query_params.get('sort', 'recent')
+        if sort == 'recent': queryset = queryset.order_by('-created_on')
+        elif sort == 'relevant': queryset = queryset.order_by('-total_reactions', '-total_comments', '-created_on')
+        else: queryset = queryset.order_by('-created_on')
+        # Filtering
         author_id = self.request.query_params.get('author')
-        if author_id:
-            queryset = queryset.filter(author_id=author_id)
+        if author_id: queryset = queryset.filter(author_id=author_id)
         return queryset
 
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user) # Pass author to create
 
-@method_decorator(csrf_exempt, name="dispatch")
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Post.objects.all()
+    # Optimized queryset
+    queryset = Post.objects.select_related('author__profile').prefetch_related('attachments', 'comments', 'reaction_set')
     serializer_class = PostSerializer
-    permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser] # Add Parsers for potential file uploads in update
+    permission_classes = [IsAuthenticated] # Or IsAuthenticatedOrReadOnly
+    parser_classes = [JSONParser] # JSON only
 
-
-    def update(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs): # Handles PUT/PATCH
         post = self.get_object()
-        if post.author != request.user:
-            return Response({"error": "You are not authorized to edit this post."}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
+        if post.author != request.user: return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+        # Use partial=True for PATCH, default is partial=False for PUT
+        partial = kwargs.pop('partial', False)
+        serializer = self.get_serializer(post, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
-    def destroy(self, request, *args, **kwargs):
+    def destroy(self, request, *args, **kwargs): # Handles DELETE
         post = self.get_object()
-        if post.author != request.user:
-            return Response({"error": "You are not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+        if post.author != request.user: return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+        # Optional: Delete Cloudinary attachments before post.delete()
+        instance = self.get_object()
+        for attachment in instance.attachments.all():
+            # Delete DB record first (or Cloudinary won't find file?) - Test this order
+            attachment.delete()
+            # TODO: Add explicit Cloudinary file deletion here if needed via Cloudinary SDK
+        self.perform_destroy(instance) # Deletes Post record
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-
+# --- Comment Views ---
+@method_decorator(csrf_exempt, name='dispatch')
 class CommentCreateView(generics.CreateAPIView):
-    queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser] # Add Parsers
-
+    parser_classes = [JSONParser] # JSON only
 
     def perform_create(self, serializer):
-        # Pass author and ensure post is correctly associated (serializer expects post_id)
-        post_id = self.kwargs.get('post_id') # Get post_id from URL kwargs
-        post_instance = get_object_or_404(Post, pk=post_id) # Ensure post exists
-        serializer.save(author=self.request.user, post=post_instance) # Pass post instance
+        post_instance = get_object_or_404(Post, pk=self.kwargs['post_id'])
+        # Pass author and validated post instance to serializer create
+        serializer.save(author=self.request.user, post=post_instance)
 
-
-class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Comment.objects.all()
+class ListCommentsView(generics.ListAPIView):
     serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated] # Or AllowAny
+    pagination_class = CommentResultsSetPagination
+    parser_classes = [JSONParser]
+
+    def get_queryset(self):
+        post_id = self.kwargs['post_id']
+        # Optimize fetches
+        return Comment.objects.filter(post_id=post_id).select_related('author__profile').prefetch_related('attachments', 'reaction_set').order_by('created_on') # Oldest first for display
+
+class CommentEditView(APIView): # Use APIView for more control over update
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
 
+    def put(self, request, post_id, pk, *args, **kwargs): # Changed comment_id to pk
+        # Ensure comment belongs to post for URL structure safety
+        comment = get_object_or_404(Comment, pk=pk, post_id=post_id)
+        if comment.author != request.user: return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        # Use specific Edit serializer
+        serializer = EditCommentSerializer(comment, data=request.data, partial=True) # Allow partial update
+        if serializer.is_valid():
+            serializer.save()
+            # Return full comment data after edit using the main serializer
+            return Response(CommentSerializer(instance=comment, context={'request': request}).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def update(self, request, *args, **kwargs):
-        comment = self.get_object()
-        if comment.author != request.user:
-            return Response({"error": "You are not authorized to edit this comment."}, status=status.HTTP_403_FORBIDDEN)
-        return super().update(request, *args, **kwargs)
+class CommentDeleteView(APIView): # Use APIView for custom delete logic
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser] # Expect confirmation in body
 
-    def destroy(self, request, *args, **kwargs):
-        comment = self.get_object()
-        if comment.author != request.user:
-            return Response({"error": "You are not authorized to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+    def delete(self, request, post_id, pk, *args, **kwargs): # Changed comment_id to pk
+        comment = get_object_or_404(Comment, pk=pk, post_id=post_id)
+        if comment.author != request.user: return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Use simple check instead of serializer if body is just {} or empty
+        # Or keep serializer if frontend sends {confirmation: true}
+        # serializer = DeleteCommentSerializer(data=request.data)
+        # if serializer.is_valid() and serializer.validated_data['confirmation']:
+        #     comment.delete()
+        #     return Response(status=status.HTTP_204_NO_CONTENT)
+        # return Response(serializer.errors if serializer.errors else {'detail': 'Confirmation failed.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Simpler: Assume DELETE means confirmation if protected endpoint
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
 class AddReaction(APIView):
     permission_classes = [IsAuthenticated]
-    # parser_classes = [JSONParser]
+    parser_classes = [JSONParser]
 
     def post(self, request, post_id=None, comment_id=None, reaction_type=None):
         if reaction_type not in dict(Reaction.REACTIONS):
@@ -139,7 +170,7 @@ class AddReaction(APIView):
 @method_decorator(csrf_exempt, name="dispatch")
 class RemoveReaction(APIView):
     permission_classes = [IsAuthenticated]
-    # parser_classes = [JSONParser]
+    parser_classes = [JSONParser]
 
     def post(self, request, post_id=None, comment_id=None):
         """Removes a reaction from a post or comment"""
@@ -155,22 +186,11 @@ class RemoveReaction(APIView):
         return Response({"success": True}, status=status.HTTP_200_OK)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
-class ListCommentsView(generics.ListAPIView):
-    serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated]
-    # parser_classes = [JSONParser]
-
-    def get_queryset(self):
-        # Get the post using the 'post_id' in the URL
-        post_id = self.kwargs['post_id']
-        return Comment.objects.filter(post_id=post_id).order_by('-created_on')  # Assuming you have a 'created_on' field
-
 
 @method_decorator(csrf_exempt, name="dispatch")
 class PostReactionsView(APIView):
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
-    # parser_classes = [JSONParser]
+    parser_classes = [JSONParser]
     
     def get(self, request, post_id):
         """Retrieve all reactions for a specific post"""

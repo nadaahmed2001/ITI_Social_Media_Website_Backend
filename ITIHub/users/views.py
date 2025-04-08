@@ -20,6 +20,12 @@ from datetime import timedelta
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.core.exceptions import ObjectDoesNotExist
+
+
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
@@ -57,7 +63,6 @@ class RegisterStudentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-from rest_framework_simplejwt.tokens import RefreshToken
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
@@ -184,21 +189,33 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 
 class UserAccountAPI(APIView):
     permission_classes = [IsAuthenticated, IsOwnerOrReadOnly]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def get(self, request):
-        # Get the logged-in user's profile
-        profile = request.user.profile
-        serializer = ProfileSerializer(profile)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            # Get the profile associated with the logged-in user
+            profile = request.user.profile
+            # Serialize the profile data
+            serializer = ProfileSerializer(profile, context={'request': request}) # Pass context if needed by serializer
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            # Handle case where user exists but profile doesn't (shouldn't happen with signals)
+            return Response({"detail": "Profile not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            # Handle case where request.user doesn't have .profile (less likely for OneToOne)
+            return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
-        # Get the logged-in user's profile
-        profile = request.user.profile
-        serializer = ProfileSerializer(profile, data=request.data, partial=True)
-
+        try:
+            profile = request.user.profile
+        except ObjectDoesNotExist:
+            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        # The ProfileSerializer's update method now handles saving the
+        # 'is_two_factor_enabled' field to the related User model.
+        serializer = ProfileSerializer(profile, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save() # Serializer's update handles user field
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # ==============================================================================================================================================
