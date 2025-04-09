@@ -1,41 +1,76 @@
 from rest_framework import serializers
 from .models import Post, Comment, Attachment, Reaction
+from users.models import Profile
 
 class AttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attachment
-        fields = '__all__'
+        fields = ['id', 'image', 'video', 'uploaded_on']
 
 class PostSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField()
+    author = serializers.SerializerMethodField()
+    author_profile_picture = serializers.SerializerMethodField()
     reaction_counts = serializers.SerializerMethodField()
-    attachments = AttachmentSerializer(many=True, required=False)
+    attachments = AttachmentSerializer(many=True, read_only=True)
+    attachment_urls = serializers.ListField(
+        child=serializers.URLField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = Post
-        fields = ["id", "author", "body", "created_on", "reaction_counts", "attachments"]
+        fields = ["id", "author", "author_profile_picture", "body", "created_on", 
+                "reaction_counts", "attachments", "attachment_urls"]
+
+    def get_author(self, obj):
+        return obj.author.username
+
+    def get_author_profile_picture(self, obj):
+        profile = Profile.objects.filter(user=obj.author).first()
+        return profile.profile_picture if profile else None
 
     def get_reaction_counts(self, obj):
         return obj.reaction_counts()
 
     def create(self, validated_data):
-        attachments_data = self.context['request'].FILES.getlist('attachments')
+        attachment_urls = validated_data.pop('attachment_urls', [])
         post = Post.objects.create(**validated_data)
         
-        for attachment_data in attachments_data:
-            attachment = Attachment.objects.create(image=attachment_data)
+        for url in attachment_urls:
+            is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
+            is_video = any(ext in url.lower() for ext in ['.mp4', '.mov'])
+            
+            attachment = Attachment.objects.create(
+                image=url if is_image else None,
+                video=url if is_video else None
+            )
             post.attachments.add(attachment)
         
         return post
 
+
+
+
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.StringRelatedField()
+    author = serializers.SerializerMethodField()
+    author_profile_picture = serializers.SerializerMethodField()
     reaction_counts = serializers.SerializerMethodField()
     attachments = AttachmentSerializer(many=True, required=False)
 
     class Meta:
         model = Comment
-        fields = ["id", "post", "author", "comment", "created_on", "reaction_counts", "attachments"]
+        fields = ["id", "post", "author", "author_profile_picture", "comment", "created_on", "reaction_counts", "attachments"]
+
+    def get_author(self, obj):
+        return obj.author.username
+
+    def get_author_profile_picture(self, obj):
+        try:
+            profile = Profile.objects.get(user=obj.author)
+            return profile.profile_picture
+        except Profile.DoesNotExist:
+            return None
 
     def get_reaction_counts(self, obj):
         return obj.reaction_counts()
@@ -91,55 +126,3 @@ class ReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Reaction
         fields = ['id', 'user', 'reaction_type', 'post', 'comment', 'timestamp']
-
-# from rest_framework import serializers
-# from .models import Post, Comment, Attachment, Reaction
-
-# class AttachmentSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Attachment
-#         fields = '__all__'
-
-# class PostSerializer(serializers.ModelSerializer):
-#     author = serializers.StringRelatedField()
-#     reaction_counts = serializers.SerializerMethodField()
-#     attachments = AttachmentSerializer(many=True, required=False)
-
-#     class Meta:
-#         model = Post
-#         fields = ["id", "author", "body", "created_on", "reaction_counts", "attachments"]
-
-#     def get_reaction_counts(self, obj):
-#         return obj.reaction_counts()
-
-#     def create(self, validated_data):
-#         attachments_data = self.context['request'].FILES.getlist('attachments')
-#         post = Post.objects.create(**validated_data)
-        
-#         for attachment_data in attachments_data:
-#             attachment = Attachment.objects.create(image=attachment_data)
-#             post.attachments.add(attachment)
-        
-#         return post
-
-# class CommentSerializer(serializers.ModelSerializer):
-#     author = serializers.StringRelatedField()
-#     reaction_counts = serializers.SerializerMethodField()
-#     attachments = AttachmentSerializer(many=True, required=False)
-
-#     class Meta:
-#         model = Comment
-#         fields = ["id", "post", "author", "comment", "created_on", "reaction_counts", "attachments"]
-
-#     def get_reaction_counts(self, obj):
-#         return obj.reaction_counts()
-
-#     def create(self, validated_data):
-#         attachments_data = self.context['request'].FILES.getlist('attachments')
-#         comment = Comment.objects.create(**validated_data)
-        
-#         for attachment_data in attachments_data:
-#             attachment = Attachment.objects.create(image=attachment_data)
-#             comment.attachments.add(attachment)
-        
-#         return comment

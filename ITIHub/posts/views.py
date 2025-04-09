@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from .models import Post, Comment, Reaction
+from .models import Post, Comment, Reaction, Attachment
 from .serializers import PostSerializer, CommentSerializer, ReactionSerializer , EditCommentSerializer, DeleteCommentSerializer
 from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
@@ -20,16 +20,31 @@ from django.utils.decorators import method_decorator
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
+    queryset = Post.objects.all().order_by('-created_on')
+
 
     def get_queryset(self):
-        queryset = Post.objects.all().order_by('-created_on')
+        queryset = Post.objects.all().select_related('author__profile').prefetch_related('attachments').order_by('-created_on')
         author_id = self.request.query_params.get('author')
         if author_id:
             queryset = queryset.filter(author_id=author_id)
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        attachment_url = self.request.data.get('attachment_url')
+        post = serializer.save(author=self.request.user)
+        
+        if attachment_url:
+            # Determine file type
+            is_image = any(ext in attachment_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
+            is_video = any(ext in attachment_url.lower() for ext in ['.mp4', '.mov'])
+            
+            attachment = Attachment.objects.create(
+                image=attachment_url if is_image else None,
+                video=attachment_url if is_video else None
+            )
+            post.attachments.add(attachment)
+        
 
 @method_decorator(csrf_exempt, name="dispatch")
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -49,44 +64,6 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({"error": "You are not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
-#  Like & Dislike Post (Toggle)
-# class PostLikeDislikeView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request, pk, action):
-#         post = get_object_or_404(Post, pk=pk)
-
-#         if action == "like":
-#             post.toggle_like(request.user)
-#             if post.author != request.user:  
-#                 Notification.objects.create(
-#                     recipient=post.author,
-#                     sender=request.user,
-#                     notification_type="reaction",
-#                     reaction_type="like", 
-#                     related_content_type=ContentType.objects.get_for_model(post),
-#                     related_object_id=post.id
-#                 )
-
-#         elif action == "dislike":
-#             post.toggle_dislike(request.user)
-#             if post.author != request.user:
-#                 Notification.objects.create(
-#                     recipient=post.author,
-#                     sender=request.user,
-#                     notification_type="reaction",
-#                     reaction_type="dislike",
-#                     related_content_type=ContentType.objects.get_for_model(post),
-#                     related_object_id=post.id
-#                 )
-
-#         else:
-#             return Response(
-#                 {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
@@ -165,7 +142,10 @@ class ListCommentsView(generics.ListAPIView):
     def get_queryset(self):
         # Get the post using the 'post_id' in the URL
         post_id = self.kwargs['post_id']
-        return Comment.objects.filter(post_id=post_id).order_by('-created_on')  # Assuming you have a 'created_on' field
+        return Comment.objects.filter(post_id=post_id)\
+                             .select_related('author__profile')\
+                             .order_by('-created_on')
+
 @method_decorator(csrf_exempt, name="dispatch")
 class PostReactionsView(APIView):
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated

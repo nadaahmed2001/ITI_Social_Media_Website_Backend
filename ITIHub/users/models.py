@@ -86,7 +86,7 @@ class Profile(models.Model):
     updated = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return str(self.user.username)
+        return f"{self.user.username}'s Profile"
     
     
 class Skill(models.Model):
