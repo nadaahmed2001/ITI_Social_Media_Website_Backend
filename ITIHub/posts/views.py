@@ -15,33 +15,42 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from rest_framework.pagination import PageNumberPagination
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10  # Number of posts per page
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Post.objects.all().order_by('-created_on')
-
-
+    pagination_class = StandardResultsSetPagination  # Add this line
+    
     def get_queryset(self):
-        queryset = Post.objects.all().select_related('author__profile').prefetch_related('attachments').order_by('-created_on')
-        author_id = self.request.query_params.get('author')
-        if author_id:
+        queryset = Post.objects.all() \
+            .select_related('author__profile') \
+            .prefetch_related('attachments') \
+            .order_by('-created_on')
+        
+        if author_id := self.request.query_params.get('author'):
             queryset = queryset.filter(author_id=author_id)
+        
         return queryset
 
     def perform_create(self, serializer):
-        attachment_url = self.request.data.get('attachment_url')
+        attachment_urls = self.request.data.getlist('attachment_urls', [])  # Changed to getlist
         post = serializer.save(author=self.request.user)
         
-        if attachment_url:
-            # Determine file type
-            is_image = any(ext in attachment_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
-            is_video = any(ext in attachment_url.lower() for ext in ['.mp4', '.mov'])
+        for url in attachment_urls:
+            is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
+            is_video = any(ext in url.lower() for ext in ['.mp4', '.mov'])
             
             attachment = Attachment.objects.create(
-                image=attachment_url if is_image else None,
-                video=attachment_url if is_video else None
+                image=url if is_image else None,
+                video=url if is_video else None
             )
             post.attachments.add(attachment)
         
