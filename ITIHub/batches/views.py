@@ -22,7 +22,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 
-
+# Views:
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
@@ -42,7 +42,6 @@ class ProgramViewSet(viewsets.ModelViewSet):
             return Program.objects.none()  # Return empty queryset if no department
         
         return Program.objects.filter(department=department)
-
 class TrackViewSet(viewsets.ModelViewSet):
     serializer_class = TrackSerializer
     permission_classes = [IsAuthenticated]
@@ -57,8 +56,15 @@ class TrackViewSet(viewsets.ModelViewSet):
         # Get programs in that department
         programs = Program.objects.filter(department=department)
 
-        return Track.objects.filter(program__in=programs)
+        # Get program_id from query parameters (if present)
+        program_id = self.request.query_params.get('program_id')
 
+        if program_id:
+            # Filter tracks by program_id if present
+            return Track.objects.filter(program_id=program_id)
+        
+        # If no program_id, return all tracks related to programs in the department
+        return Track.objects.filter(program__in=programs)
 
 @method_decorator(csrf_exempt, name="dispatch")
 class BatchViewSet(viewsets.ModelViewSet):
