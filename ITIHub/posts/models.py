@@ -30,7 +30,7 @@ class Post(models.Model):
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
-    comment = models.TextField(validators=[MaxLengthValidator(3000), MinLengthValidator(1)])
+    comment = models.TextField(validators=[MaxLengthValidator(2000), MinLengthValidator(1)])
     created_on = models.DateTimeField(auto_now_add=True)
     attachments = models.ManyToManyField(Attachment, blank=True)
 

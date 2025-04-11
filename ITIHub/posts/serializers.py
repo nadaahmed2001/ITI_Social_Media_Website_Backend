@@ -38,8 +38,8 @@ class PostSerializer(serializers.ModelSerializer):
         post = Post.objects.create(**validated_data)
         
         for url in attachment_urls:
-            is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
-            is_video = any(ext in url.lower() for ext in ['.mp4', '.mov'])
+            is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'])
+            is_video = any(ext in url.lower() for ext in ['.mp4', '.mov', '.avi', '.webm', '.mkv'])
             
             attachment = Attachment.objects.create(
                 image=url if is_image else None,
