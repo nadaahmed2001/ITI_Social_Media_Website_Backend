@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User
-from batches.models import StudentBatch
+from batches.models import StudentBatch, Batch, Department
 from users.models import Profile, Skill
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model, password_validation
@@ -40,6 +40,13 @@ class LoginSerializer(serializers.Serializer):
 class ProfileSerializer(serializers.ModelSerializer):
     profile_picture = serializers.URLField(max_length=500, required=False, allow_null=True)
     is_two_factor_enabled = serializers.BooleanField(source='user.is_two_factor_enabled', required=False)
+    
+    # New Fields
+    is_student = serializers.BooleanField(source='user.is_student', read_only=True)
+    is_supervisor = serializers.BooleanField(source='user.is_supervisor', read_only=True)
+    iti_history = serializers.SerializerMethodField()  # For student batch history
+    department = serializers.SerializerMethodField()  # For supervisor department
+    supervised_tracks = serializers.SerializerMethodField()  # For supervisor tracks
 
     class Meta:
         model = Profile
@@ -56,12 +63,42 @@ class ProfileSerializer(serializers.ModelSerializer):
         instance = super().update(instance, validated_data)
         return instance
 
+    # Get ITI History for students
+    def get_iti_history(self, obj):
+        if not obj.user.is_student:
+            return None
+        student = getattr(obj.user, "student", None)
+        if not student:
+            return []
+        student_batches = StudentBatch.objects.filter(student=student).select_related("batch__program", "batch__track")
+        return [
+            {
+                "program": sb.batch.program.name,
+                "track": sb.batch.track.name if sb.batch.track else None,
+                "start_date": sb.batch.created_at.strftime('%Y-%m-%d'),
+                "status": "Graduated" if not sb.batch.active else "Studying"
+            } for sb in student_batches
+        ]
+
+    # Get Department for supervisors
+    def get_department(self, obj):
+        if not obj.user.is_supervisor:
+            return None
+        dept = Department.objects.filter(supervisor=obj.user).first()
+        return dept.name if dept else None
+
+    # Get supervised tracks for supervisors
+    def get_supervised_tracks(self, obj):
+        if not obj.user.is_supervisor:
+            return []
+        batches = Batch.objects.filter(supervisor=obj.user).select_related("track")
+        return list({b.track.name for b in batches if b.track})
+
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
         fields = '__all__'
-        
 
 #reset password serializers
 class PasswordResetSerializer(serializers.Serializer):

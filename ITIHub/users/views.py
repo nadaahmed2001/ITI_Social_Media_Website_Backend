@@ -6,7 +6,7 @@ from rest_framework import status, permissions
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student
+from batches.models import StudentBatch, VerifiedNationalID, UnverifiedNationalID, Student, Batch, Department
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
@@ -35,6 +35,7 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
 )
 from django.conf import settings
+from rest_framework_simplejwt.tokens import RefreshToken
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
@@ -64,6 +65,9 @@ class RegisterStudentView(APIView):
                 print("I have created the student: ", student)
                 StudentBatch.objects.create(student=student, batch=batch)
                 unverified_entry.delete()
+                VerifiedNationalID.objects.create(national_id=national_id, batch=batch)
+
+                print("I have created the verified entry: ", national_id)
 
                 return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
             except UnverifiedNationalID.DoesNotExist:
@@ -72,7 +76,7 @@ class RegisterStudentView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-from rest_framework_simplejwt.tokens import RefreshToken
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
@@ -581,6 +585,7 @@ class ConfirmEmailChangeView(APIView):
 # ==============================================================================================================================================
 class AllProfilesAPI(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         """
         Get all profiles and their associated skills.
@@ -590,36 +595,69 @@ class AllProfilesAPI(APIView):
 
         # Loop through each profile and serialize the data
         for profile in profiles:
-            profile_data = ProfileSerializer(profile).data  # Serialize individual profile
-            
+            # Serialize the individual profile with the updated serializer
+            profile_data = ProfileSerializer(profile).data
+
             # Fetching skills for each profile
             main_skills = profile.skill_set.exclude(description__exact="")  # Main skills with description
             other_skills = profile.skill_set.filter(description="")  # Skills without description
-            
+
             # Add skills to the profile data
             profile_data["main_skills"] = SkillSerializer(main_skills, many=True).data
             profile_data["other_skills"] = SkillSerializer(other_skills, many=True).data
-            
+
             # Add the profile data to the list
             all_profiles_data.append(profile_data)
 
         return Response(all_profiles_data, status=status.HTTP_200_OK)
 
+
 class UserProfileAPI(APIView):
     def get(self, request, id):
         """
-        Get a specific profile and its associated skills.
+        Get a specific profile and its associated skills, plus ITI history/status.
         """
         profile = get_object_or_404(Profile, id=id)  # Retrieve the specific profile by ID
-        
+        user = profile.user
+        profile_data = ProfileSerializer(profile).data
+
         # Categorizing skills
         main_skills = profile.skill_set.exclude(description__exact="")
         other_skills = profile.skill_set.filter(description="")
-        
-        # Serializing the profile data
-        profile_data = ProfileSerializer(profile).data
+
         profile_data["main_skills"] = SkillSerializer(main_skills, many=True).data
         profile_data["other_skills"] = SkillSerializer(other_skills, many=True).data
+
+        # ====== NEW ITI HISTORY SECTION =======
+        if user.is_student:
+            student=get_object_or_404(Student, user=user)  # Get the student instance
+            student_batches = StudentBatch.objects.filter(student=student).select_related("batch__program", "batch__track")
+                
+            print("Student batches:",student_batches)  # debugging
+                
+            iti_history = []
+            for sb in student_batches:
+                batch = sb.batch
+                iti_history.append({
+                    "program": batch.program.name,
+                    "track": batch.track.name if batch.track else None,
+                    "start_date": batch.created_at.strftime('%Y-%m-%d'),
+                    "status": "Graduated" if not batch.active else "Studying",
+                })
+            profile_data["iti_history"] = iti_history
+        else:
+            profile_data["iti_history"] = []
+
+        if user.is_supervisor:
+            # Supervisor's department
+            department = Department.objects.filter(supervisor=user).first()
+            if department:
+                profile_data["department"] = department.name
+
+            # Tracks supervised via batches
+            batches = Batch.objects.filter(supervisor=user).select_related("track")
+            tracks = {batch.track.name for batch in batches if batch.track}
+            profile_data["supervised_tracks"] = list(tracks)
 
         return Response(profile_data, status=status.HTTP_200_OK)
 
