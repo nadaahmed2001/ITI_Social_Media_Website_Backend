@@ -136,6 +136,8 @@ SIMPLE_JWT = {
 #     "http://127.0.0.1:5173",
 # ]
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") 
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',

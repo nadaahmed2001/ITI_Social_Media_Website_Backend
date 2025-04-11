@@ -1,7 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import get_user_model
 User = get_user_model()
-
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from rest_framework import generics, permissions
@@ -18,6 +17,9 @@ from .serializers import ChatBotMessageSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+import openai
+from django.conf import settings
+
 
 # 🟢 View Group Chat Page
 @method_decorator(csrf_exempt, name="dispatch")
@@ -241,25 +243,27 @@ def delete_group_message(request, group_id, message_id):
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotView(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request, *args, **kwargs):
         user = request.user
         user_message = request.data.get('message', '').strip()
-
         if not user_message:
             return Response({"error": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # ITI-specific rule-based responses
-        iti_responses = {
-            "what is iti?": "ITI (Information Technology Institute) is a leading institute in IT training and education.",
-            "where is iti located?": "ITI has multiple branches across Egypt, including Smart Village, Mansoura, and Alexandria.",
-            "how to apply to iti?": "You can apply to ITI through their official website during the application period.",
-            # Add more rules here...
-        }
-
-        # Check if the message matches any predefined rule
-        bot_response = iti_responses.get(user_message.lower())
-        if bot_response:
+        openai.api_key = settings.OPENAI_API_KEY
+        try:
+            completion = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": (
+                        "You are an assistant for ITI Scholarships students. "
+                        "You give academic advice, share study resources, explain ITI rules, "
+                        "and support students in making the most of their scholarship."
+                    )},
+                    {"role": "user", "content": user_message},
+                ],
+                max_tokens=300,
+                temperature=0.7
+            )
+            bot_response = completion.choices[0].message['content']
             # Save the conversation in the database
             chatbot_message = ChatBotMessage.objects.create(
                 user=user,
@@ -269,8 +273,9 @@ class ChatBotView(APIView):
             serializer = ChatBotMessageSerializer(chatbot_message)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        # If no rule matches, return a default response
-        return Response({"error": "I can only answer ITI-related questions."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Failed to get response: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotMessagesView(APIView):
