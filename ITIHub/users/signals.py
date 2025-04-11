@@ -35,7 +35,8 @@ def add_user_to_batch_chat(sender, instance, **kwargs):
             
             if student_batch:
                 # Get the group chat for the batch
-                group_chat = GroupChat.objects.filter(batches=student_batch.batch).first()
+                # get group chat by supervisor of the batch
+                group_chat = GroupChat.objects.filter(supervisors=student_batch.batch.supervisor).first()
                 if group_chat:
                     group_chat.members.add(instance)  # Add student to the group chat
                     group_chat.save()  # Save the group chat
