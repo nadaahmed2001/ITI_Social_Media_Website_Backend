@@ -24,16 +24,25 @@ class StandardResultsSetPagination(PageNumberPagination):
     max_page_size = 100
 
 
+class CommentPagination(PageNumberPagination):
+    page_size = 3  # Or your desired number of comments per page
+    page_size_query_param = 'page_size' # Allows frontend to request different size (optional)
+    max_page_size = 20 # Max comments per page
+
+
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination  # Add this line
     
     def get_queryset(self):
+        # Ensure author__profile is selected
         queryset = Post.objects.all() \
             .select_related('author__profile') \
             .prefetch_related('attachments') \
             .order_by('-created_on')
+        # ... filtering ...
+        # return queryset
         
         if author_id := self.request.query_params.get('author'):
             queryset = queryset.filter(author_id=author_id)
@@ -147,13 +156,15 @@ class RemoveReaction(APIView):
 class ListCommentsView(generics.ListAPIView):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CommentPagination # <--- ADD THIS LINE
+
 
     def get_queryset(self):
         # Get the post using the 'post_id' in the URL
         post_id = self.kwargs['post_id']
         return Comment.objects.filter(post_id=post_id)\
-                             .select_related('author__profile')\
-                             .order_by('-created_on')
+                            .select_related('author__profile')\
+                            .order_by('-created_on')
 
 @method_decorator(csrf_exempt, name="dispatch")
 class PostReactionsView(APIView):

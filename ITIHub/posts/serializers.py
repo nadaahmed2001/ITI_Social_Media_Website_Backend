@@ -17,14 +17,23 @@ class PostSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    author_id = serializers.SerializerMethodField(read_only=True)
+
 
     class Meta:
         model = Post
-        fields = ["id", "author", "author_profile_picture", "body", "created_on", 
-                "reaction_counts", "attachments", "attachment_urls"]
+        fields = ["id", "author", "author_id", "author_profile_picture", "body", 
+                "created_on", "reaction_counts", "attachments", "attachment_urls"]
 
     def get_author(self, obj):
         return obj.author.username
+    
+    def get_author_id(self, obj):
+        # Assumes Profile.id is the UUID associated with the User
+        # Use select_related('author__profile') in the view's queryset
+        profile = getattr(obj.author, 'profile', None)
+        # Return as string to match frontend context UUID string
+        return str(profile.id) if profile and hasattr(profile, 'id') else None
 
     def get_author_profile_picture(self, obj):
         profile = Profile.objects.filter(user=obj.author).first()
@@ -52,26 +61,40 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    # Keep read-only fields for displaying author info
-    author = serializers.SerializerMethodField(read_only=True) 
+    author = serializers.SerializerMethodField(read_only=True)
     author_profile_picture = serializers.SerializerMethodField(read_only=True)
     reaction_counts = serializers.SerializerMethodField(read_only=True)
-    # Keep read-only field for displaying attachments in responses
-    attachments = AttachmentSerializer(many=True, read_only=True) 
-
-    # --- Add write-only field to ACCEPT the URL from the frontend ---
+    attachments = AttachmentSerializer(many=True, read_only=True)
     attachment_url = serializers.URLField(write_only=True, required=False, allow_null=True, allow_blank=True)
+    
+    # --- CHANGE author_id TO A METHOD FIELD ---
+    author_id = serializers.SerializerMethodField(read_only=True)
+    # ---
 
     class Meta:
         model = Comment
-        # Add 'attachment_url' to the list of fields the serializer handles
-        fields = ["id", "post", "author", "author_profile_picture", "comment", 
+        # Keep 'author_id' in fields
+        fields = ["id", "post", "author", "author_id", "author_profile_picture", "comment",
                 "created_on", "reaction_counts", "attachments", "attachment_url"]
-        # Define fields that shouldn't be editable directly via the main serializer input
-        read_only_fields = ["author", "author_profile_picture", "reaction_counts", "attachments", "created_on"] 
+        # read_only_fields are implicitly handled for method fields, but keep others
+        read_only_fields = ["author", "author_profile_picture", "reaction_counts", "attachments", "created_on"]
+ 
 
     def get_author(self, obj):
         return obj.author.username
+    
+    def get_author_id(self, obj):
+        # obj is a Comment instance
+        # Assumes the UUID identifier used by your frontend/account API 
+        # is the primary key of the related Profile model.
+        # Use select_related('author__profile') in the view's queryset for efficiency.
+        profile = getattr(obj.author, 'profile', None) 
+        if profile and hasattr(profile, 'id'):
+            # Return the Profile's ID (assumed to be the UUID) AS A STRING
+            return str(profile.id) 
+        # Fallback or error handling if profile or profile.id doesn't exist
+        return None 
+    
 
     def get_author_profile_picture(self, obj):
         # Optimization: Use select_related('author__profile') in the view's queryset
