@@ -170,14 +170,23 @@ class ReactionSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True) 
     # Use a method field to explicitly get the Profile's UUID as user_id
     user_id = serializers.SerializerMethodField(read_only=True) 
-    
+    user_profile_picture = serializers.SerializerMethodField(read_only=True)
     post = serializers.PrimaryKeyRelatedField(read_only=True) 
     comment = serializers.PrimaryKeyRelatedField(read_only=True) 
 
     class Meta: 
         model = Reaction
         # Use user_id and user_username instead of the nested user object
-        fields = ['id', 'user_id', 'user_username', 'reaction_type', 'post', 'comment', 'timestamp']
+        fields = [
+            'id', 
+            'user_id',          # Profile UUID (from get_user_id)
+            'user_username',    # User's username
+            'user_profile_picture', # Profile picture URL (from get_user_profile_picture)
+            'reaction_type', 
+            'post', 
+            'comment', 
+            'timestamp'
+        ]
     
     # This method provides the value for the 'user_id' field defined above
     def get_user_id(self, obj):
@@ -204,6 +213,13 @@ class ReactionSerializer(serializers.ModelSerializer):
         except Exception as e:
                 print(f"Error getting profile ID for reaction {obj.id}: {e}")
                 return None
+    
+    def get_user_profile_picture(self, obj):
+        # obj is a Reaction instance
+        # Requires select_related('user__profile') in view
+        profile = getattr(obj.user, 'profile', None)
+        # Return profile_picture URL if profile exists and has the attribute
+        return profile.profile_picture if profile and hasattr(profile, 'profile_picture') else None
 
 class EditCommentSerializer(serializers.ModelSerializer):
     class Meta:
