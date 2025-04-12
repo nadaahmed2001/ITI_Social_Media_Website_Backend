@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Post, Comment, Attachment, Reaction
-from users.models import Profile
+from users.models import Profile, User
 
 class AttachmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -149,15 +149,62 @@ class CommentSerializer(serializers.ModelSerializer):
         return comment
 
     
-class ReactionSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()  # Display username as string
-    post = serializers.StringRelatedField()  # Display post as string (useful for debugging)
-    comment = serializers.StringRelatedField()  # Display comment as string (useful for debugging)
-
+class UserInReactionSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True) # Use UUIDField
+    username = serializers.CharField(read_only=True)
+    
     class Meta:
+        model = User 
+        fields = ['id', 'username']
+
+# posts/serializers.py
+from rest_framework import serializers
+from .models import Reaction # Keep other necessary model imports
+from users.models import User, Profile # Import User and Profile
+
+# Remove or comment out UserInReactionSerializer if not used elsewhere
+# class UserInReactionSerializer(serializers.ModelSerializer): ...
+
+class ReactionSerializer(serializers.ModelSerializer): 
+    # Get username directly from the related user model
+    user_username = serializers.CharField(source='user.username', read_only=True) 
+    # Use a method field to explicitly get the Profile's UUID as user_id
+    user_id = serializers.SerializerMethodField(read_only=True) 
+    
+    post = serializers.PrimaryKeyRelatedField(read_only=True) 
+    comment = serializers.PrimaryKeyRelatedField(read_only=True) 
+
+    class Meta: 
         model = Reaction
-        fields = ['id', 'user', 'reaction_type', 'post', 'comment', 'timestamp']
-## 
+        # Use user_id and user_username instead of the nested user object
+        fields = ['id', 'user_id', 'user_username', 'reaction_type', 'post', 'comment', 'timestamp']
+    
+    # This method provides the value for the 'user_id' field defined above
+    def get_user_id(self, obj):
+        # obj is a Reaction instance. obj.user is the User instance.
+        try:
+            # Access the related profile's id (which IS the UUID)
+            # This relies on using select_related('user__profile') in the ViewSet/View
+            profile_uuid = obj.user.profile.id 
+            # Return the UUID AS A STRING to match frontend context
+            return str(profile_uuid) 
+        except Profile.DoesNotExist:
+            # Handle case where profile might not exist for some reason
+            print(f"Warning: Profile not found for user {obj.user.id} in ReactionSerializer")
+            return None
+        except AttributeError:
+            # Handle case where select_related might not have been used efficiently
+            print(f"Warning: 'profile' attribute not readily available for user {obj.user.id}. Querying separately.")
+            try:
+                profile = Profile.objects.get(user=obj.user)
+                return str(profile.id)
+            except Profile.DoesNotExist:
+                print(f"Error: Profile truly does not exist for user {obj.user.id}")
+                return None
+        except Exception as e:
+                print(f"Error getting profile ID for reaction {obj.id}: {e}")
+                return None
+
 class EditCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
@@ -180,13 +227,3 @@ class DeleteCommentSerializer(serializers.Serializer):
             'invalid': 'Confirmation must be a boolean value'
         }
     )
-
-
-class ReactionSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()
-    post = serializers.StringRelatedField()
-    comment = serializers.StringRelatedField()
-
-    class Meta:
-        model = Reaction
-        fields = ['id', 'user', 'reaction_type', 'post', 'comment', 'timestamp']

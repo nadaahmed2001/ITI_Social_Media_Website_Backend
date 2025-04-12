@@ -166,25 +166,25 @@ class ListCommentsView(generics.ListAPIView):
                             .select_related('author__profile')\
                             .order_by('-created_on')
 
-@method_decorator(csrf_exempt, name="dispatch")
-class PostReactionsView(APIView):
-    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+@method_decorator(csrf_exempt, name="dispatch") 
+class PostReactionsView(APIView): 
+    permission_classes = [IsAuthenticated] 
     
-    def get(self, request, post_id):
-        """Retrieve all reactions for a specific post"""
-        try:
-            # Get the post instance
-            post = Post.objects.get(id=post_id)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+    def get(self, request, post_id): 
+        try: 
+            post = Post.objects.get(id=post_id) 
+        except Post.DoesNotExist: 
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND) 
 
-        # Filter reactions by post
-        reactions = Reaction.objects.filter(post=post)
+        # *** Crucial: Fetch related user and profile efficiently ***
+        reactions = Reaction.objects.filter(post=post).select_related('user__profile') 
 
-        # Serialize the reactions
-        serializer = ReactionSerializer(reactions, many=True)
+        serializer = ReactionSerializer(reactions, many=True) 
         return Response(serializer.data, status=status.HTTP_200_OK)
-    ## Edit Comment API
+    
+    
+    
+    
 class CommentEditView(APIView):
     permission_classes = [IsAuthenticated]
 
