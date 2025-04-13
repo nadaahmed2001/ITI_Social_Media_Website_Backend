@@ -138,6 +138,33 @@ class UserProfileView(APIView):
         })
 
 # ===============================================================================================================================================
+# class PasswordResetRequestView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def post(self, request):
+#         serializer = PasswordResetSerializer(data=request.data)
+#         if serializer.is_valid():
+#             email = serializer.validated_data["email"]
+#             user = get_object_or_404(User, email=email)
+
+#             reset_code = user.generate_reset_code()  
+
+#             user.password_reset_code = reset_code
+#             user.reset_code_expiry = timezone.now() + timedelta(hours=1)
+#             user.save()
+
+#             send_mail(
+#                 "Password Reset Code",
+#                 f"Your password reset code is: {reset_code}. Please use this code to reset your password.",
+#                 "noreply@itihub.com",
+#                 [user.email],
+#                 fail_silently=False,
+#             )
+
+#             return Response({"message": "Password reset code sent successfully."}, status=status.HTTP_200_OK)
+        
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
 
@@ -147,23 +174,158 @@ class PasswordResetRequestView(APIView):
             email = serializer.validated_data["email"]
             user = get_object_or_404(User, email=email)
 
-            reset_code = user.generate_reset_code()  
+            reset_code = user.generate_reset_code()
+            expiration_hours = 1  # Code expires in 1 hour
+            current_time = timezone.now().strftime('%Y-%m-%d %H:%M:%S %Z')
+            reset_url = f"{settings.FRONTEND_BASE_URL}/password-reset-confirm"
 
+            # Update user with reset code
             user.password_reset_code = reset_code
-            user.reset_code_expiry = timezone.now() + timedelta(hours=1)
+            user.reset_code_expiry = timezone.now() + timedelta(hours=expiration_hours)
             user.save()
 
-            send_mail(
-                "Password Reset Code",
-                f"Your password reset code is: {reset_code}. Please use this code to reset your password.",
-                "noreply@itihub.com",
-                [user.email],
-                fail_silently=False,
-            )
+            # HTML Email Template
+            subject = f"Password Reset Request for Your{settings.SITE_NAME } Account"
+            sender = settings.DEFAULT_FROM_EMAIL or "testiticommunity@gmail.com"
+            recipient = user.email
 
-            return Response({"message": "Password reset code sent successfully."}, status=status.HTTP_200_OK)
+            html_message = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>{subject}</title>
+                <style>
+                    body {{
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        line-height: 1.6;
+                        color: #333333;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #f9f9f9;
+                    }}
+                    .email-container {{
+                        background-color: #ffffff;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                        overflow: hidden;
+                    }}
+                    .header {{
+                        padding: 25px;
+                        text-align: center;
+                        background-color: #f0f4f8;
+                        border-bottom: 1px solid #e0e6ed;
+                    }}
+                    .logo {{
+                        max-height: 50px;
+                        margin-bottom: 15px;
+                    }}
+                    .content {{
+                        padding: 25px;
+                    }}
+                    .button {{
+                        display: inline-block;
+                        padding: 12px 30px;
+                        background-color: #4f46e5;
+                        color: #ffffff !important;
+                        text-decoration: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        font-size: 16px;
+                    }}
+                    .code-box {{
+                        font-family: 'Courier New', Courier, monospace;
+                        font-size: 24px;
+                        letter-spacing: 3px;
+                        text-align: center;
+                        background-color: #f8fafc;
+                        padding: 15px;
+                        margin: 20px 0;
+                        border-radius: 6px;
+                        border: 1px dashed #e2e8f0;
+                        color: #1e40af;
+                        font-weight: bold;
+                    }}
+                    .security-note {{
+                        background-color: #fef2f2;
+                        border-left: 4px solid #dc2626;
+                        padding: 15px;
+                        margin: 20px 0;
+                        border-radius: 0 4px 4px 0;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="email-container">
+                    <div class="header">
+                        <img src="{settings.LOGO_URL or 'https://via.placeholder.com/150x50'}" alt="{settings.SITE_NAME or 'App'}" class="logo">
+                        <h2 style="margin: 10px 0 0; color: #1e293b;">Password Reset</h2>
+                    </div>
+                    
+                    <div class="content">
+                        <p>Hello,</p>
+                        
+                        <p>We received a password reset request for your {settings.SITE_NAME} account on {current_time}.</p>
+                        
+                        <p style="text-align: center;">
+                            <a href="{reset_url}" class="button">Reset Password</a>
+                        </p>
+                        
+                        <p style="text-align: center;">Or use this verification code:</p>
+                        <div class="code-box">{reset_code}</div>
+                        
+                        <p style="text-align: center;">This code will expire in {expiration_hours} hour(s).</p>
+                        
+                        <div class="security-note">
+                            <p><strong>Important:</strong> If you didn't request this password reset:</p>
+                            <ul>
+                                <li>Ignore this email - your password remains unchanged</li>
+                                <li>Contact support if you notice suspicious activity</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            # Plain text version
+            plain_message = f"""
+            Password Reset Request
+            
+            Hello,
+            
+            We received a password reset request for your {settings.SITE_NAME} ' account' on {current_time}.
+            
+            Your verification code is:
+            {reset_code}
+            
+            Or visit this link to reset your password:
+            {reset_url}
+            
+            This code will expire in {expiration_hours} hour.
+            
+            Important: If you didn't request this password reset, please ignore this email.
+            """
+
+            # Send email
+            msg = EmailMultiAlternatives(
+                subject=subject,
+                body=plain_message,
+                from_email=sender,
+                to=[recipient]
+            )
+            msg.attach_alternative(html_message, "text/html")
+            msg.send()
+
+            return Response(
+                {"message": "Password reset code sent successfully."},
+                status=status.HTTP_200_OK
+            )
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class PasswordResetConfirmView(APIView):
