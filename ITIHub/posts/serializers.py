@@ -66,16 +66,15 @@ class CommentSerializer(serializers.ModelSerializer):
     reaction_counts = serializers.SerializerMethodField(read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
     attachment_url = serializers.URLField(write_only=True, required=False, allow_null=True, allow_blank=True)
-    
-    # --- CHANGE author_id TO A METHOD FIELD ---
     author_id = serializers.SerializerMethodField(read_only=True)
-    # ---
+    my_reaction = serializers.SerializerMethodField(read_only=True) # <-- ADD THIS
+
 
     class Meta:
         model = Comment
         # Keep 'author_id' in fields
         fields = ["id", "post", "author", "author_id", "author_profile_picture", "comment",
-                "created_on", "reaction_counts", "attachments", "attachment_url"]
+                "created_on", "reaction_counts", "my_reaction", "attachments", "attachment_url"]
         # read_only_fields are implicitly handled for method fields, but keep others
         read_only_fields = ["author", "author_profile_picture", "reaction_counts", "attachments", "created_on"]
  
@@ -110,6 +109,16 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_reaction_counts(self, obj):
         return obj.reaction_counts()
 
+    def get_my_reaction(self, obj):
+        user = self.context['request'].user
+        if not user or not user.is_authenticated:
+            return None
+        try:
+            reaction = Reaction.objects.get(comment=obj, user=user)
+            return reaction.reaction_type
+        except Reaction.DoesNotExist:
+            return None
+        
     # --- Modified create method to handle attachment_url ---
     def create(self, validated_data):
         # Pop the attachment_url if it was sent and validated
