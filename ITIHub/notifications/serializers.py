@@ -92,22 +92,18 @@ class NotificationSerializer(serializers.ModelSerializer):
 
         elif obj.notification_type == "reaction":
             if hasattr(related_object, "post") and related_object.post:
-                return f"{frontend_base_url}/posts/{related_object.post.id}/reactions/"
+                return f"{frontend_base_url}/dashboard/posts/{related_object.post.id}?scroll_to=reaction-{related_object.id}"
             elif hasattr(related_object, "comment") and related_object.comment:
-                # Check if comment has a post associated with it
                 if hasattr(related_object.comment, "post") and related_object.comment.post:
-                    return f"{frontend_base_url}/posts/{related_object.comment.post.id}/comment/{related_object.comment.id}/reactions/"
+                    return f"{frontend_base_url}/dashboard/posts/{related_object.comment.post.id}?scroll_to=reaction-{related_object.id}"
                 else:
-                    return f"{frontend_base_url}/posts/{related_object.comment.id}/reactions/"
-            return f"{frontend_base_url}/"
+                    return f"{frontend_base_url}/dashboard/posts/{related_object.comment.id}?scroll_to=reaction-{related_object.id}"
 
         elif obj.notification_type == "comment":
             if hasattr(related_object, "post") and related_object.post:
-                return f"{frontend_base_url}/posts/{related_object.post.id}/comment/{related_object.id}"
-
-        elif obj.notification_type == "follow" and obj.sender:
-            return f"{frontend_base_url}/profile/{obj.sender.username}/"
+                return f"{frontend_base_url}/dashboard/posts/{related_object.post.id}?scroll_to=comment-{related_object.id}"
 
         return f"{frontend_base_url}/"
+
 
 
