@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.decorators import user_passes_test
-from .models import Program, Track, Batch
+from .models import Program, Track, Batch, UnverifiedNationalID, VerifiedNationalID, Student
 from .serializers import ProgramSerializer, TrackSerializer, BatchSerializer
 from rest_framework import viewsets
 from .models import Department, StudentBatch
@@ -133,8 +133,6 @@ class StudentBatchViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
-
-
 class UploadNationalIDView(APIView):
     parser_classes = (MultiPartParser, FormParser)
     permission_classes = [IsAuthenticated]
@@ -166,15 +164,21 @@ class UploadNationalIDView(APIView):
             created_count = 0
             for national_id in national_ids:
                 if not UnverifiedNationalID.objects.filter(national_id=national_id).exists():
+                    # Add to UnverifiedNationalID
                     UnverifiedNationalID.objects.create(national_id=national_id, batch=batch)
                     created_count += 1
-                else :
+                else:
                     print(f"National ID {national_id} already exists")
-                    # Make a new instance of the StudentBatch model (if not already exists)
-                    student_batch, created = StudentBatch.objects.get_or_create(national_id=national_id, batch=batch)
-                    if created:
-                        print(f"StudentBatch instance created for {national_id}")
-                        
+                    
+                    # Handle creation of StudentBatch based on Student linked to User via national_id
+                    try:
+                        # Try fetching the student by national_id through related user
+                        student = Student.objects.get(user__national_id=national_id)
+                        student_batch, created = StudentBatch.objects.get_or_create(student=student, batch=batch)
+                        if created:
+                            print(f"StudentBatch instance created for {national_id}")
+                    except Student.DoesNotExist:
+                        print(f"Student not found for national ID {national_id}")
 
             return Response({"message": f"{created_count} National IDs added successfully!"}, status=status.HTTP_201_CREATED)
 
