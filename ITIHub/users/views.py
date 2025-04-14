@@ -33,9 +33,13 @@ from .serializers import (
     ChangeEmailSerializer,
     VerifyOTPSerializer,
     CustomTokenObtainPairSerializer,
+    ProfileSearchSerializer
 )
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.db.models import Q # Required for OR queries
+
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class RegisterStudentView(APIView):
@@ -932,3 +936,38 @@ class VerifyOTPView(APIView):
 
 class CustomTokenObtainPairView(BaseTokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    
+    
+class ProfileSearchView(APIView):
+    """
+    API View to search for profiles based on a query parameter 'q'.
+    Searches username, first name, and last name.
+    """
+    permission_classes = [permissions.AllowAny] # Allow anyone to search (adjust if login required)
+
+    def get(self, request, *args, **kwargs):
+        query = request.query_params.get('q', None) # Get 'q' parameter
+
+        if query and query.strip():
+            query = query.strip()
+            # Perform a case-insensitive search across relevant fields
+            # Adjust fields based on your User and Profile models
+            # Assumes Profile has a 'user' relation to Django's User model
+            # Assumes Profile itself has 'username' and 'role' fields
+            results = Profile.objects.filter(
+                Q(username__icontains=query) |
+                Q(user__first_name__icontains=query) | # Search first name on related User
+                Q(user__last_name__icontains=query)   # Search last name on related User
+                # Q(role__icontains=query) # Search role on Profile (if exists)
+                # Add other fields like short_intro if desired: Q(short_intro__icontains=query)
+            ).distinct().select_related('user') # Use distinct() if Q objects might cause duplicates
+                                                # select_related('user') optimizes fetching user data
+
+            # Limit results if needed (optional)
+            # results = results[:20]
+
+            serializer = ProfileSearchSerializer(results, many=True, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            # Return empty list if no query or empty query is provided
+            return Response([], status=status.HTTP_200_OK)

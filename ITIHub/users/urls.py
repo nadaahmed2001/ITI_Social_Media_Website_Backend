@@ -18,7 +18,7 @@ from .views import (
                     CustomTokenObtainPairView,
                     PasswordResetRequestView,
                     PasswordResetConfirmView,
-                
+                    ProfileSearchView,
                     )
 
 
@@ -40,6 +40,7 @@ urlpatterns = [
     path("profile/", UserProfileView.as_view(), name="user_profile"),   # For getting signed-in user profile
     path('profiles/', AllProfilesAPI.as_view(), name="all_profiles"),            # For getting all profiles
     path('profiles/<str:id>/', UserProfileAPI.as_view(), name='user_profile'),   # For getting a profile by user id
+
     
     # User Account
     path('account/', UserAccountAPI.as_view(), name='user_account_api'), # For getting, and updating the user account

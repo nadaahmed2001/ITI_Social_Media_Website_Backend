@@ -329,3 +329,23 @@ class VerifyOTPSerializer(serializers.Serializer):
         data['user'] = user
         data['otp_instance'] = otp_instance
         return data
+    
+    
+    
+class ProfileSearchSerializer(serializers.ModelSerializer):
+    """
+    Serializer for returning basic profile info in search results.
+    """
+    # Make sure the field names here match the fields used in your
+    # frontend ProfileSearchResult component (id, username, profile_picture, role)
+    # If 'role' is on the related User model, you might need source='user.role'
+    # or add it manually if it's calculated differently.
+
+    # Assuming 'role' is a field directly on the Profile model for simplicity here
+    # If not, adjust accordingly (e.g., add a SerializerMethodField or adjust source)
+
+    class Meta:
+        model = Profile
+        fields = ['id', 'username', 'profile_picture'] # Adjust fields as needed
+        # Add 'role' if it exists directly on Profile model
+        # If 'role' comes from User model: fields = ['id', 'username', 'profile_picture'] and handle role in view or add source
