@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from .models import Post, Comment, Reaction
+from .models import Post, Comment, Reaction, Attachment
 from .serializers import PostSerializer, CommentSerializer, ReactionSerializer , EditCommentSerializer, DeleteCommentSerializer
 from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
@@ -15,21 +15,54 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from rest_framework.pagination import PageNumberPagination
+
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10  # Number of posts per page
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class CommentPagination(PageNumberPagination):
+    page_size = 3  # Or your desired number of comments per page
+    page_size_query_param = 'page_size' # Allows frontend to request different size (optional)
+    max_page_size = 20 # Max comments per page
 
 
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
-
+    pagination_class = StandardResultsSetPagination  # Add this line
+    
     def get_queryset(self):
-        queryset = Post.objects.all().order_by('-created_on')
-        author_id = self.request.query_params.get('author')
-        if author_id:
+        # Ensure author__profile is selected
+        queryset = Post.objects.all() \
+            .select_related('author__profile') \
+            .prefetch_related('attachments') \
+            .order_by('-created_on')
+        # ... filtering ...
+        # return queryset
+        
+        if author_id := self.request.query_params.get('author'):
             queryset = queryset.filter(author_id=author_id)
+        
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        attachment_urls = self.request.data.getlist('attachment_urls', [])  # Changed to getlist
+        post = serializer.save(author=self.request.user)
+        
+        for url in attachment_urls:
+            is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
+            is_video = any(ext in url.lower() for ext in ['.mp4', '.mov'])
+            
+            attachment = Attachment.objects.create(
+                image=url if is_image else None,
+                video=url if is_video else None
+            )
+            post.attachments.add(attachment)
+        
 
 @method_decorator(csrf_exempt, name="dispatch")
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -49,44 +82,6 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response({"error": "You are not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
-#  Like & Dislike Post (Toggle)
-# class PostLikeDislikeView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request, pk, action):
-#         post = get_object_or_404(Post, pk=pk)
-
-#         if action == "like":
-#             post.toggle_like(request.user)
-#             if post.author != request.user:  
-#                 Notification.objects.create(
-#                     recipient=post.author,
-#                     sender=request.user,
-#                     notification_type="reaction",
-#                     reaction_type="like", 
-#                     related_content_type=ContentType.objects.get_for_model(post),
-#                     related_object_id=post.id
-#                 )
-
-#         elif action == "dislike":
-#             post.toggle_dislike(request.user)
-#             if post.author != request.user:
-#                 Notification.objects.create(
-#                     recipient=post.author,
-#                     sender=request.user,
-#                     notification_type="reaction",
-#                     reaction_type="dislike",
-#                     related_content_type=ContentType.objects.get_for_model(post),
-#                     related_object_id=post.id
-#                 )
-
-#         else:
-#             return Response(
-#                 {"error": f"Invalid action '{action}'. Allowed actions: ['like', 'dislike']."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-
-#         return Response({"message": f"Post {action}d successfully."}, status=status.HTTP_200_OK)
 
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
@@ -161,30 +156,35 @@ class RemoveReaction(APIView):
 class ListCommentsView(generics.ListAPIView):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = CommentPagination # <--- ADD THIS LINE
+
 
     def get_queryset(self):
         # Get the post using the 'post_id' in the URL
         post_id = self.kwargs['post_id']
-        return Comment.objects.filter(post_id=post_id).order_by('-created_on')  # Assuming you have a 'created_on' field
-@method_decorator(csrf_exempt, name="dispatch")
-class PostReactionsView(APIView):
-    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+        return Comment.objects.filter(post_id=post_id)\
+                            .select_related('author__profile')\
+                            .order_by('-created_on')
+
+@method_decorator(csrf_exempt, name="dispatch") 
+class PostReactionsView(APIView): 
+    permission_classes = [IsAuthenticated] 
     
-    def get(self, request, post_id):
-        """Retrieve all reactions for a specific post"""
-        try:
-            # Get the post instance
-            post = Post.objects.get(id=post_id)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+    def get(self, request, post_id): 
+        try: 
+            post = Post.objects.get(id=post_id) 
+        except Post.DoesNotExist: 
+            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND) 
 
-        # Filter reactions by post
-        reactions = Reaction.objects.filter(post=post)
+        # *** Crucial: Fetch related user and profile efficiently ***
+        reactions = Reaction.objects.filter(post=post).select_related('user__profile') 
 
-        # Serialize the reactions
-        serializer = ReactionSerializer(reactions, many=True)
+        serializer = ReactionSerializer(reactions, many=True) 
         return Response(serializer.data, status=status.HTTP_200_OK)
-    ## Edit Comment API
+    
+    
+    
+    
 class CommentEditView(APIView):
     permission_classes = [IsAuthenticated]
 
