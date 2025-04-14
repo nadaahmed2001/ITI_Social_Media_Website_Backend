@@ -223,8 +223,8 @@ class CustomTokenObtainPairSerializer(BaseTokenObtainPairSerializer):
 
         # --- Safety check (should have self.user if super().validate passed) ---
         if not hasattr(self, 'user') or not self.user:
-             # This should ideally not happen if super().validate didn't raise error
-             raise serializers.ValidationError("User authentication failed unexpectedly.", code='authorization')
+            # This should ideally not happen if super().validate didn't raise error
+            raise serializers.ValidationError("User authentication failed unexpectedly.", code='authorization')
 
         # --- Step 2: Check if 2FA is Enabled ---
         if self.user.is_two_factor_enabled:
@@ -285,7 +285,7 @@ class CustomTokenObtainPairSerializer(BaseTokenObtainPairSerializer):
                 # This case should theoretically not be reached if fail_silently=False
                 # unless the 'recipient' check failed and raised ValidationError earlier.
                 # But as a fallback:
-                 raise serializers.ValidationError("Failed to send OTP.", code='authorization')
+                raise serializers.ValidationError("Failed to send OTP.", code='authorization')
 
         else:
             # --- Step 5: 2FA Disabled - Return Tokens ---
