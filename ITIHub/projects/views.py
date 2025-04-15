@@ -50,34 +50,33 @@ class ProjectAPI(APIView):
 
     def post(self, request):
         # Add the owner to the data before creating the project
-        data = request.data.copy()
-        owner = request.user.profile  # Get the profile of the logged-in user
-        data['owner'] = owner.id  # Set the 'owner' to the profile ID (UUID)
+        try:
+            # Get the owner profile directly from the authenticated user
+            owner_profile = request.user.profile
+        except Profile.DoesNotExist:
+            return Response({"detail": "User profile not found."}, status=status.HTTP_400_BAD_REQUEST)
+        except AttributeError:
+            return Response({"detail": "Cannot determine user profile."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Handle the file upload for featured_image
-        if 'featured_image' in request.FILES:
-            data['featured_image'] = request.FILES['featured_image']
+        # Initialize the serializer with request data.
+        # DO NOT manually add 'owner' to request.data here.
+        # The serializer should handle 'featured_image' (if ImageField) and 'tag_names' (write_only)
+        serializer = ProjectSerializer(data=request.data, context={'request': request})
 
-        # Handle tags in the request data
-        tags_data = request.data.get('tags', [])
-        tags = []
-
-        # Iterate over tag names to either fetch existing tags or create new ones
-        for tag_name in tags_data:
-            tag_name_lower = tag_name.strip().lower()  # Normalize to lowercase
-            tag, created = Tag.objects.get_or_create(name=tag_name_lower)
-            tags.append(tag)
-
-        # Add tags to the data dictionary for saving the project
-        data['tags'] = [tag.id for tag in tags]
-
-        # Create the project with the provided data
-        serializer = ProjectSerializer(data=data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()  # Save the project instance
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # *** Pass the owner instance directly to serializer.save() ***
+                serializer.save(owner=owner_profile)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                # Catch potential errors during save (e.g., database constraints)
+                print(f"Error during serializer save: {e}") # Log the error
+                # Provide a generic error message to the frontend
+                return Response({"detail": "An error occurred while saving the project."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            # If validation fails, return errors
+            print("Serializer Errors:", serializer.errors) # Log errors for debugging
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def put(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
