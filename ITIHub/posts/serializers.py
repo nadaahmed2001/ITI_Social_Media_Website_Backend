@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, Comment, Attachment, Reaction
+from .models import Post,SavedPost, Comment, Attachment, Reaction
 from users.models import Profile, User
 
 class AttachmentSerializer(serializers.ModelSerializer):
@@ -18,12 +18,14 @@ class PostSerializer(serializers.ModelSerializer):
         required=False
     )
     author_id = serializers.SerializerMethodField(read_only=True)
+    is_saved = serializers.SerializerMethodField()
+
 
 
     class Meta:
         model = Post
         fields = ["id", "author", "author_id", "author_profile_picture", "body", 
-                "created_on", "reaction_counts", "attachments", "attachment_urls"]
+                "created_on", "reaction_counts", "attachments", "attachment_urls","is_saved",]
 
     def get_author(self, obj):
         return obj.author.username
@@ -42,6 +44,16 @@ class PostSerializer(serializers.ModelSerializer):
     def get_reaction_counts(self, obj):
         return obj.reaction_counts()
 
+    def get_is_saved(self, obj):
+        """
+        Check if the requesting user has saved this post.
+        """
+        user = self.context['request'].user
+        if user and user.is_authenticated:
+            # Check if a SavedPost record exists for this user and post
+            return SavedPost.objects.filter(user=user, post=obj).exists()
+        return False # Not saved if user is not authenticated
+    
     def create(self, validated_data):
         attachment_urls = validated_data.pop('attachment_urls', [])
         post = Post.objects.create(**validated_data)
@@ -59,6 +71,13 @@ class PostSerializer(serializers.ModelSerializer):
         return post
 
 
+class SavedPostSerializer(serializers.ModelSerializer):
+    # You might want to nest the PostSerializer here
+    post = PostSerializer(read_only=True)
+    class Meta:
+        model = SavedPost
+        fields = ['id', 'post', 'saved_on']
+        
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField(read_only=True)
@@ -77,7 +96,7 @@ class CommentSerializer(serializers.ModelSerializer):
                 "created_on", "reaction_counts", "my_reaction", "attachments", "attachment_url"]
         # read_only_fields are implicitly handled for method fields, but keep others
         read_only_fields = ["author", "author_profile_picture", "reaction_counts", "attachments", "created_on"]
- 
+
 
     def get_author(self, obj):
         return obj.author.username

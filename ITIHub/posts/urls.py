@@ -1,11 +1,17 @@
 
 from django.urls import path
-from .views import (PostListCreateView, PostDetailView, CommentCreateView,
-                    CommentDetailView, AddReaction, RemoveReaction , ListCommentsView , PostReactionsView , CommentEditView , CommentDeleteView ,CommentReactionsView) 
+from .views import (PostListCreateView, PostDetailView, SavePostToggleView, SavedPostListView, 
+                    CommentCreateView, CommentDetailView, AddReaction, RemoveReaction , ListCommentsView , 
+                    PostReactionsView , CommentEditView , CommentDeleteView ,
+                    CommentReactionsView) 
 
 urlpatterns = [
     path('', PostListCreateView.as_view(), name='post-list-create'),
     path('<int:pk>/', PostDetailView.as_view(), name='post-detail'),  # Use post_id
+    path('<int:post_id>/save/', SavePostToggleView.as_view(), name='save-post-toggle'), # Handles POST (save) and DELETE (unsave)
+    path('saved/', SavedPostListView.as_view(), name='saved-post-list'),
+
+
     path('<int:post_id>/comment/', CommentCreateView.as_view(), name='comment-create'),  # Use post_id
     # path('comment/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
     path('<int:post_id>/comments/', ListCommentsView.as_view(), name='post-comments'),

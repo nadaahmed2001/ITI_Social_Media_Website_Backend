@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from .models import Post, Comment, Reaction, Attachment
-from .serializers import PostSerializer, CommentSerializer, ReactionSerializer , EditCommentSerializer, DeleteCommentSerializer
+from .models import Post, SavedPost, Comment, Reaction, Attachment
+from .serializers import PostSerializer, CommentSerializer, ReactionSerializer , EditCommentSerializer, DeleteCommentSerializer, SavedPost, SavedPostSerializer
 from users.decorators import student_or_supervisor_required
 from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
@@ -81,6 +81,86 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         if post.author != request.user:
             return Response({"error": "You are not authorized to delete this post."}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
+
+
+class SavePostToggleView(APIView):
+    """
+    View to handle saving and unsaving a post.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id, *args, **kwargs):
+        """Save a post."""
+        post = get_object_or_404(Post, id=post_id)
+        user = request.user
+
+        # Create SavedPost record, get_or_create handles duplicates gracefully
+        saved_post, created = SavedPost.objects.get_or_create(user=user, post=post)
+
+        if created:
+            # If created is True, the post was newly saved
+            return Response({"status": "saved", "message": "Post saved successfully."}, status=status.HTTP_201_CREATED)
+        else:
+            # If created is False, it means the post was already saved
+            return Response({"status": "already_saved", "message": "Post was already saved."}, status=status.HTTP_200_OK)
+
+    def delete(self, request, post_id, *args, **kwargs):
+        """Unsave a post."""
+        post = get_object_or_404(Post, id=post_id)
+        user = request.user
+
+        # Find and delete the SavedPost record
+        deleted_count, _ = SavedPost.objects.filter(user=user, post=post).delete()
+
+        if deleted_count > 0:
+            # If deleted_count > 0, the post was successfully unsaved
+            return Response({"status": "unsaved", "message": "Post unsaved successfully."}, status=status.HTTP_200_OK) # Or 204 No Content
+        else:
+            # If deleted_count is 0, the post wasn't saved by this user
+            return Response({"status": "not_found", "message": "Post was not saved by this user."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class SavedPostsPagination(PageNumberPagination):
+    page_size = 9 # Show 9 saved posts per page
+    page_size_query_param = 'page_size'
+    max_page_size = 30
+
+class SavedPostListView(generics.ListAPIView):
+    """
+    API View to list posts saved by the currently authenticated user.
+    """
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = SavedPostsPagination # Optional pagination
+
+    def get_queryset(self):
+        """
+        Return a queryset of Post objects that the current user has saved,
+        ordered by when they were saved (most recent first).
+        """
+        user = self.request.user
+        # Filter Posts where a SavedPost entry exists linking it to the current user
+        # Assumes related_name on SavedPost.user is 'saved_posts_M' (fix if different)
+        # Or use the reverse relation from Post: post.saved_by_users
+        # Corrected related name from SavedPost model provided: 'saved_posts_M'
+        # If that name is wrong, adjust query. Let's assume it should be 'savedpost_set' or similar default if related_name is missing/wrong
+        # Or filter SavedPost directly and get posts from there.
+
+        # Safer approach: Filter SavedPost first
+        saved_post_ids = SavedPost.objects.filter(user=user).order_by('-saved_on').values_list('post_id', flat=True)
+
+        # Preserve the order from SavedPost using a Case/When expression or fetching in order
+        # Fetching posts based on the ordered IDs
+        # Note: This might not be the most performant for very large numbers of saved posts
+        # but preserves the 'saved_on' ordering.
+        ordered_posts = Post.objects.filter(id__in=list(saved_post_ids))
+        # If you need to precisely match the saved_on order:
+        from django.db.models import Case, When
+        preserved_order = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(saved_post_ids)])
+        queryset = Post.objects.filter(id__in=saved_post_ids).order_by(preserved_order)
+
+        # Optimize by prefetching related data needed by PostSerializer
+        return queryset.select_related('author__profile').prefetch_related('attachments')
 
 
 class CommentCreateView(generics.CreateAPIView):

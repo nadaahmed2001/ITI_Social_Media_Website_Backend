@@ -27,6 +27,23 @@ class Post(models.Model):
     class Meta:
         ordering = ['-created_on']
 
+class SavedPost(models.Model):
+    """
+    Model to represent a User saving a Post.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_posts_user')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='saved_by_users')
+    saved_on = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Ensure a user can only save a specific post once
+        unique_together = ('user', 'post')
+        ordering = ['-saved_on']
+
+    def __str__(self):
+        return f"'{self.user.username}' saved '{self.post.title[:30]}...'"
+
+
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
