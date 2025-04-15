@@ -162,6 +162,30 @@ class SavedPostListView(generics.ListAPIView):
         # Optimize by prefetching related data needed by PostSerializer
         return queryset.select_related('author__profile').prefetch_related('attachments')
 
+class MyPostListView(generics.ListAPIView):
+    """
+    API View to list posts created (authored) by the currently authenticated user.
+    """
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated] # User must be logged in
+    pagination_class = StandardResultsSetPagination 
+
+    def get_queryset(self):
+        """
+        This view should return a list of all the posts
+        for the currently authenticated user.
+        """
+        user = self.request.user
+        # Filter posts where the author is the current user
+        queryset = Post.objects.filter(author=user)
+
+        # Apply the same optimizations as your main post list view
+        queryset = queryset.select_related('author__profile') \
+                           .prefetch_related('attachments', 'reaction_set') # Add prefetch for reactions and tags if needed by serializer
+
+        # Order by creation date, newest first
+        return queryset.order_by('-created_on')
+
 
 class CommentCreateView(generics.CreateAPIView):
     queryset = Comment.objects.all()
