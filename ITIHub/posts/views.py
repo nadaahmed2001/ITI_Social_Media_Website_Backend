@@ -287,8 +287,6 @@ class PostReactionsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     
-    
-    
 class CommentEditView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -342,3 +340,6 @@ class CommentReactionsView(APIView):
         reactions = Reaction.objects.filter(comment=comment)
         serializer = ReactionSerializer(reactions, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+

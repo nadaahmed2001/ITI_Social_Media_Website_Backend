@@ -1,5 +1,6 @@
-from .models import User, Profile, EmailChangeRequest, Skill
+from .models import User, Profile, EmailChangeRequest, Skill, Follow
 from django.contrib.auth import authenticate, get_user_model
+from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -33,11 +34,14 @@ from .serializers import (
     ChangeEmailSerializer,
     VerifyOTPSerializer,
     CustomTokenObtainPairSerializer,
-    ProfileSearchSerializer
+    ProfileSearchSerializer,
+    MinimalUserSerializer
 )
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q # Required for OR queries
+
+
 
 
 
@@ -130,16 +134,31 @@ class LogoutView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# class UserProfileView(APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def get(self, request):
+#         user = request.user
+#         return Response({
+#             "id": user.id,
+#             "username": user.username,
+#             "email": user.email
+#         })
+
+
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
-
     def get(self, request):
-        user = request.user
-        return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email
-        })
+        try:
+            profile = request.user.profile
+            # *** FIX: Pass context here too! ***
+            serializer = ProfileSerializer(profile, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Profile.DoesNotExist:
+            return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        except AttributeError:
+            return Response({"detail": "Error accessing profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # ===============================================================================================================================================
 # class PasswordResetRequestView(APIView):
@@ -783,9 +802,14 @@ class UserProfileAPI(APIView):
         """
         Get a specific profile and its associated skills, plus ITI history/status.
         """
-        profile = get_object_or_404(Profile, id=id)  # Retrieve the specific profile by ID
+        # profile = get_object_or_404(Profile, id=id)  # Retrieve the specific profile by ID
+        profile = get_object_or_404(Profile.objects.select_related('user'), id=id)
+
+        serializer = ProfileSerializer(profile, context={'request': request})
+        profile_data = serializer.data
+        
         user = profile.user
-        profile_data = ProfileSerializer(profile).data
+        # profile_data = ProfileSerializer(profile).data
 
         # Categorizing skills
         main_skills = profile.skill_set.exclude(description__exact="")
@@ -971,3 +995,49 @@ class ProfileSearchView(APIView):
         else:
             # Return empty list if no query or empty query is provided
             return Response([], status=status.HTTP_200_OK)
+        
+class FollowToggleView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def post(self, request, profile_id, *args, **kwargs): # param name matches urls.py
+        target_profile = get_object_or_404(Profile, id=profile_id)
+        target_user = target_profile.user
+        follower_user = request.user
+        if target_user == follower_user: return Response({"detail": "You cannot follow yourself."}, status=status.HTTP_400_BAD_REQUEST)
+        follow, created = Follow.objects.get_or_create(follower=follower_user, following=target_user)
+        print(f"Follow record result: Follow instance={follow}, Created={created}") # Keep DEBUG log
+        print(f"Attempted follow: {follower_user.username} -> {target_user.username}") # Keep DEBUG log
+        if created: return Response({"status": "followed", "message": f"You are now following {target_user.username}."}, status=status.HTTP_201_CREATED)
+        else: return Response({"status": "already_following", "message": f"You are already following {target_user.username}."}, status=status.HTTP_200_OK)
+
+    def delete(self, request, profile_id, *args, **kwargs): # param name matches urls.py
+        target_profile = get_object_or_404(Profile, id=profile_id)
+        target_user = target_profile.user
+        follower_user = request.user
+        deleted_count, _ = Follow.objects.filter(follower=follower_user, following=target_user).delete()
+        print(f"Unfollow result: Deleted count={deleted_count}") # Keep DEBUG log
+        print(f"Attempted unfollow: {follower_user.username} -> {target_user.username}") # Keep DEBUG log
+        if deleted_count > 0: return Response({"status": "unfollowed", "message": f"You have unfollowed {target_user.username}."}, status=status.HTTP_200_OK)
+        else: return Response({"status": "not_following", "message": f"You were not following {target_user.username}."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class FollowerListView(generics.ListAPIView):
+    serializer_class = MinimalUserSerializer
+    permission_classes = [permissions.AllowAny]
+    # pagination_class = YourPaginationClass # Add if needed
+    def get_queryset(self):
+        profile_id = self.kwargs.get('profile_id') # param name matches urls.py
+        target_profile = get_object_or_404(Profile, id=profile_id)
+        target_user = target_profile.user
+        follower_ids = Follow.objects.filter(following=target_user).values_list('follower_id', flat=True)
+        return User.objects.filter(id__in=follower_ids).select_related('profile')
+
+class FollowingListView(generics.ListAPIView):
+    serializer_class = MinimalUserSerializer
+    permission_classes = [permissions.AllowAny]
+    # pagination_class = YourPaginationClass # Add if needed
+    def get_queryset(self):
+        profile_id = self.kwargs.get('profile_id') # param name matches urls.py
+        target_profile = get_object_or_404(Profile, id=profile_id)
+        target_user = target_profile.user
+        following_ids = Follow.objects.filter(follower=target_user).values_list('following_id', flat=True)
+        return User.objects.filter(id__in=following_ids).select_related('profile')

@@ -19,6 +19,9 @@ from .views import (
                     PasswordResetRequestView,
                     PasswordResetConfirmView,
                     ProfileSearchView,
+                    FollowToggleView, 
+                    FollowerListView, 
+                    FollowingListView
                     )
 
 
@@ -40,6 +43,10 @@ urlpatterns = [
     path("profile/", UserProfileView.as_view(), name="user_profile"),   # For getting signed-in user profile
     path('profiles/', AllProfilesAPI.as_view(), name="all_profiles"),            # For getting all profiles
     path('profiles/<str:id>/', UserProfileAPI.as_view(), name='user_profile'),   # For getting a profile by user id
+    
+    path('profiles/<uuid:profile_id>/follow/', FollowToggleView.as_view(), name='follow-toggle'),
+    path('profiles/<uuid:profile_id>/followers/', FollowerListView.as_view(), name='follower-list'),
+    path('profiles/<uuid:profile_id>/following/', FollowingListView.as_view(), name='following-list'),
 
     
     # User Account

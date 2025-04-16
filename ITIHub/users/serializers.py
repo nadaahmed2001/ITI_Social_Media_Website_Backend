@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from .models import User
 from batches.models import StudentBatch, Batch, Department
-from users.models import Profile, Skill
+from users.models import Profile, Skill, Follow 
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model, password_validation
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -13,8 +13,19 @@ from django.core.mail import EmailMultiAlternatives
 from rest_framework import status
 from django.utils import timezone
 from .models import UserOTP
-
 from django.contrib.auth.tokens import default_token_generator
+
+
+User = get_user_model()
+
+
+class MinimalUserSerializer(serializers.ModelSerializer):
+    """Serializer for follower/following lists - basic info"""
+    profile_picture = serializers.URLField(source='profile.profile_picture', read_only=True)
+    profile_id = serializers.UUIDField(source='profile.id', read_only=True)
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'profile_id', 'profile_picture']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -48,10 +59,40 @@ class ProfileSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()  # For supervisor department
     supervised_tracks = serializers.SerializerMethodField()  # For supervisor tracks
 
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+    is_following = serializers.SerializerMethodField() # Does the *requesting* user follow *this* profile?
+
+    
+
     class Meta:
         model = Profile
         fields = "__all__"
-        read_only_fields = ['user', 'created', 'updated']
+        read_only_fields = ['user', 'created', 'updated', 'is_student', 'is_supervisor', 'followers_count', 'following_count']
+        
+    def get_followers_count(self, obj):
+        return obj.user.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.user.following.count()
+
+    def get_is_following(self, obj):
+        # Check context exists before accessing request
+        request = self.context.get('request', None)
+        print(f"--- get_is_following ---") # Keep this log
+        print(f"Profile being serialized (obj.user): {obj.user.username if obj.user else 'N/A'}") # Keep this log
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            print(f"Requesting user: {request.user.username}") # Keep this log
+            following_check = Follow.objects.filter(follower=request.user, following=obj.user).exists()
+            print(f"Follow record exists check: {following_check}") # Keep this log
+            return following_check
+        else:
+            # Log why it failed
+            if not request: print("Request context missing.")
+            elif not hasattr(request, 'user'): print("Request object has no user attribute.")
+            elif not request.user.is_authenticated: print("Request user is not authenticated.")
+            else: print("Unknown reason for failing user check.")
+            return False
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', None)
@@ -113,8 +154,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("Passwords do not match")
         return data
 
-User = get_user_model()
-
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
     new_password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
@@ -169,15 +208,6 @@ class ChangeEmailSerializer(serializers.Serializer):
             raise serializers.ValidationError({"confirm_new_email": "New email addresses must match."})
         return data
     
-from .models import UserOTP
-
-# users/serializers.py
-
-
-# Keep other serializers: UserSerializer, RegisterStudentSerializer, ProfileSerializer, etc.
-# ...
-
-User = get_user_model()
 
 class CustomTokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     """
@@ -330,8 +360,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         data['otp_instance'] = otp_instance
         return data
     
-    
-    
+
 class ProfileSearchSerializer(serializers.ModelSerializer):
     """
     Serializer for returning basic profile info in search results.
@@ -349,3 +378,5 @@ class ProfileSearchSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'profile_picture'] # Adjust fields as needed
         # Add 'role' if it exists directly on Profile model
         # If 'role' comes from User model: fields = ['id', 'username', 'profile_picture'] and handle role in view or add source
+
+
