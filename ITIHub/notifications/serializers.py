@@ -87,6 +87,13 @@ class NotificationSerializer(serializers.ModelSerializer):
         related_object = self.get_related_object(obj)
         frontend_base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
 
+        # Handle follow/unfollow notifications using profile UUID
+        if obj.notification_type in ["follow", "unfollow"]:
+            profile_uuid = getattr(getattr(obj.sender, "profile", None), "id", None)
+            if profile_uuid:
+                return f"{frontend_base_url}/profiles/{profile_uuid}"
+            return f"{frontend_base_url}/"
+        
         if not related_object:
             return f"{frontend_base_url}/"
 
@@ -120,6 +127,8 @@ class NotificationSerializer(serializers.ModelSerializer):
             return f"{frontend_base_url}/dashboard/profile/{obj.sender.id}"
 
         return f"{frontend_base_url}/"
+
+
 
 
 
