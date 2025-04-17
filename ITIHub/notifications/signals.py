@@ -40,16 +40,16 @@ def notify_group_message(sender, instance, created, **kwargs):
         Notification.objects.bulk_create(notifications)
 
 
-@receiver(post_save, sender=Follow)
-def notify_follow(sender, instance, created, **kwargs):
-    if created:
-        Notification.objects.create(
-            recipient=instance.following, 
-            sender=instance.follower,  
-            notification_type="follow", 
-            related_content_type=ContentType.objects.get_for_model(instance),
-            related_object_id=instance.id
-        )
+# @receiver(post_save, sender=Follow)
+# def notify_follow(sender, instance, created, **kwargs):
+#     if created:
+#         Notification.objects.create(
+#             recipient=instance.following, 
+#             sender=instance.follower,  
+#             notification_type="follow", 
+#             related_content_type=ContentType.objects.get_for_model(instance),
+#             related_object_id=instance.id
+#         )
 
 # @receiver(post_save, sender=Post)
 # def notify_followers_on_new_post(sender, instance, created, **kwargs):
@@ -81,33 +81,55 @@ def notify_post_author_on_comment(sender, instance, created, **kwargs):
 def extract_mentions(text):
     return set(re.findall(r'@([\w.-]+)', text))  
 
-@receiver(post_save, sender=Post)
-@receiver(post_save, sender=Comment)
-def notify_mentioned_users(sender, instance, created, **kwargs):
+# @receiver(post_save, sender=Post)
+# @receiver(post_save, sender=Comment)
+# def notify_mentioned_users(sender, instance, created, **kwargs):
+#     if created:
+#         if isinstance(instance, Post):
+#             text = instance.body  
+#         elif isinstance(instance, Comment):
+#             text = instance.comment  
+#         else:
+#             return  
+
+#         mentioned_usernames = extract_mentions(text) 
+#         mentioned_users = User.objects.filter(username__in=mentioned_usernames)
+
+#         notifications = [
+#             Notification(
+#                 recipient=user,
+#                 sender=instance.author,
+#                 notification_type="mention",
+#                 related_content_type=ContentType.objects.get_for_model(instance),
+#                 related_object_id=instance.id
+#             )
+#             for user in mentioned_users if user != instance.author
+#         ]
+#         Notification.objects.bulk_create(notifications)
+
+@receiver(post_save, sender=Follow)
+def notify_follow(sender, instance, created, **kwargs):
+    # If the Follow instance is newly created
     if created:
-        if isinstance(instance, Post):
-            text = instance.body  
-        elif isinstance(instance, Comment):
-            text = instance.comment  
-        else:
-            return  
+        # Send a 'follow' notification
+        Notification.objects.create(
+            recipient=instance.following,
+            sender=instance.follower,
+            notification_type="follow",
+            related_content_type=ContentType.objects.get_for_model(instance),
+            related_object_id=instance.id
+        )
 
-        mentioned_usernames = extract_mentions(text) 
-        mentioned_users = User.objects.filter(username__in=mentioned_usernames)
-
-        notifications = [
-            Notification(
-                recipient=user,
-                sender=instance.author,
-                notification_type="mention",
-                related_content_type=ContentType.objects.get_for_model(instance),
-                related_object_id=instance.id
-            )
-            for user in mentioned_users if user != instance.author
-        ]
-        Notification.objects.bulk_create(notifications)
-
-
+@receiver(post_delete, sender=Follow)
+def notify_unfollow(sender, instance, **kwargs):
+    # Send an 'unfollow' notification when the follow relationship is deleted
+    Notification.objects.create(
+        recipient=instance.following,
+        sender=instance.follower,
+        notification_type="unfollow",
+        related_content_type=ContentType.objects.get_for_model(instance),
+        related_object_id=instance.id
+    )
 
 @receiver(post_save, sender=Reaction)
 def notify_reaction(sender, instance, created, **kwargs):

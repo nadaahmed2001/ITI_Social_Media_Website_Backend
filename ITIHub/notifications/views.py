@@ -34,6 +34,24 @@ class GroupChatNotificationsView(NotificationListView):
     notification_types = ["group_chat"]
 
 
+class FollowNotificationsView(NotificationListView):
+    notification_types = ["follow"]
+
+class UnFollowNotificationsView(NotificationListView):
+    notification_types = ["unfollow"]  
+
+class UnreadFollowNotificationsView(NotificationListView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(
+            recipient=self.request.user,
+            notification_type__in=["follow", "unfollow"], 
+            is_read=False
+        ).order_by('-created_at')
+
+
 class UnreadChatNotificationsView(NotificationListView):
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]

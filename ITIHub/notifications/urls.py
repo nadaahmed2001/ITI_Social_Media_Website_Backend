@@ -13,6 +13,8 @@ from .views import (
     MarkPostNotificationsAsRead,
     DeletePostNotifications,  
     UnreadPostNotificationsView,
+    FollowNotificationsView,
+    UnreadFollowNotificationsView,
 )
 
 urlpatterns = [
@@ -32,4 +34,7 @@ urlpatterns = [
     path('posts/mark-all-as-read/', MarkPostNotificationsAsRead.as_view(), name='mark-post-notifications-read'),
     path('posts/delete-all/', DeletePostNotifications.as_view(), name='delete-post-notifications'),
     path('posts/unread/', UnreadPostNotificationsView.as_view(), name='unread-post-notifications'),
+
+    path('follow/', FollowNotificationsView.as_view(), name='follow-notifications'),
+    path('follow/unread/', UnreadFollowNotificationsView.as_view(), name='unread-follow-notifications'),
 ]
