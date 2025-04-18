@@ -51,21 +51,25 @@ def notify_group_message(sender, instance, created, **kwargs):
 #             related_object_id=instance.id
 #         )
 
-# @receiver(post_save, sender=Post)
-# def notify_followers_on_new_post(sender, instance, created, **kwargs):
-#     if created:
-#         followers = instance.author.followers.all()
-#         notifications = [
-#             Notification(
-#                 recipient=follower,
-#                 sender=instance.author,
-#                 notification_type="new_post",
-#                 related_content_type=ContentType.objects.get_for_model(instance),
-#                 related_object_id=instance.id
-#             )
-#             for follower in followers
-#         ]
-#         Notification.objects.bulk_create(notifications)
+@receiver(post_save, sender=Post)
+def notify_followers_on_new_post(sender, instance, created, **kwargs):
+    if created:
+        author = instance.author
+        followers = Follow.objects.filter(following=author).select_related('follower')
+
+        notifications = [
+            Notification(
+                recipient=f.follower,
+                sender=author,
+                notification_type="new_post",
+                related_content_type=ContentType.objects.get_for_model(Post),
+                related_object_id=instance.id
+            )
+            for f in followers if f.follower != author  
+        ]
+
+        Notification.objects.bulk_create(notifications)
+
 
 @receiver(post_save, sender=Comment)
 def notify_post_author_on_comment(sender, instance, created, **kwargs):
@@ -144,7 +148,6 @@ def notify_reaction(sender, instance, created, **kwargs):
                 related_object_id=instance.id
             )
         elif instance.comment and instance.comment.author != instance.user:
-            print("✅ Reaction on comment: ", instance)
             Notification.objects.create(
                 recipient=instance.comment.author,
                 sender=instance.user,

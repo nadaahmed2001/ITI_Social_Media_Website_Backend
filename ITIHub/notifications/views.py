@@ -33,6 +33,8 @@ class ChatNotificationsView(NotificationListView):
 class GroupChatNotificationsView(NotificationListView):
     notification_types = ["group_chat"]
 
+class NewPostNotificationsView(NotificationListView):
+    notification_types = ["new_post"]
 
 class FollowNotificationsView(NotificationListView):
     notification_types = ["follow"]

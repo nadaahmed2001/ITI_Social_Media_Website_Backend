@@ -15,11 +15,12 @@ from .views import (
     UnreadPostNotificationsView,
     FollowNotificationsView,
     UnreadFollowNotificationsView,
+    NewPostNotificationsView,
 )
 
 urlpatterns = [
     path('', NotificationListView.as_view(), name='all-notifications'),
-     path('unread/', UnreadNotificationsView.as_view(), name='unread-notifications'),
+    path('unread/', UnreadNotificationsView.as_view(), name='unread-notifications'),
     path('mark-all-as-read/', MarkAllNotificationsAsRead.as_view(), name='mark_all_notifications_as_read'),
     path('clear-all/', ClearAllNotifications.as_view(), name='clear-all-notifications'),
 
@@ -34,6 +35,7 @@ urlpatterns = [
     path('posts/mark-all-as-read/', MarkPostNotificationsAsRead.as_view(), name='mark-post-notifications-read'),
     path('posts/delete-all/', DeletePostNotifications.as_view(), name='delete-post-notifications'),
     path('posts/unread/', UnreadPostNotificationsView.as_view(), name='unread-post-notifications'),
+    path('posts/new/', NewPostNotificationsView.as_view(), name='new-post-notifications'),
 
     path('follow/', FollowNotificationsView.as_view(), name='follow-notifications'),
     path('follow/unread/', UnreadFollowNotificationsView.as_view(), name='unread-follow-notifications'),

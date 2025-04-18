@@ -58,6 +58,9 @@ class NotificationSerializer(serializers.ModelSerializer):
         elif obj.notification_type == "unfollow":
             return f"{sender_username} unfollowed you"
 
+        elif obj.notification_type == "new_post":
+            return f"{sender_username} posted a new post"
+
         elif obj.notification_type == "batch_assignment":
             return f"You have been assigned to the batch {related_object.name}" if related_object else "You have been assigned to a batch"
 
@@ -87,14 +90,13 @@ class NotificationSerializer(serializers.ModelSerializer):
         related_object = self.get_related_object(obj)
         frontend_base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
 
-        # Handle follow/unfollow notifications using profile UUID
         if obj.notification_type in ["follow", "unfollow"]:
             profile_uuid = getattr(getattr(obj.sender, "profile", None), "id", None)
             if profile_uuid:
                 return f"{frontend_base_url}/profiles/{profile_uuid}"
             return f"{frontend_base_url}/"
-        
-        if not related_object:
+
+        if not related_object and obj.notification_type != "new_post":
             return f"{frontend_base_url}/"
 
         if obj.notification_type == "batch_assignment":
@@ -109,24 +111,23 @@ class NotificationSerializer(serializers.ModelSerializer):
                 else:
                     return f"{frontend_base_url}/dashboard/posts/{related_object.comment.id}?scroll_to=reaction-{related_object.id}"
 
+        elif obj.notification_type == "new_post":
+            return f"{frontend_base_url}/dashboard/posts/{obj.related_object_id}"
+
         elif obj.notification_type == "comment":
             if hasattr(related_object, "post") and related_object.post:
                 return f"{frontend_base_url}/dashboard/posts/{related_object.post.id}?scroll_to=comment-{related_object.id}"
 
-
         elif obj.notification_type == "chat":
             if related_object:
-                return f"{frontend_base_url}/dashboard/chat/private/{related_object.sender.id}"
-            
+                return f"{frontend_base_url}/messagesList/private/{related_object.sender.id}"
+
         elif obj.notification_type == "group_chat":
             if related_object and hasattr(related_object, "group"):
-                return f"{frontend_base_url}/dashboard/chat/groups/{related_object.group.id}"
-
-
-        elif obj.notification_type in ["follow", "unfollow"]:
-            return f"{frontend_base_url}/dashboard/profile/{obj.sender.id}"
+                return f"{frontend_base_url}/messagesList/group/{related_object.group.id}"
 
         return f"{frontend_base_url}/"
+
 
 
 
