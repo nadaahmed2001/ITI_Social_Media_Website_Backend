@@ -1,16 +1,10 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import action
 from django.contrib.auth.decorators import user_passes_test
-from .models import Program, Track, Batch
-from .serializers import ProgramSerializer, TrackSerializer, BatchSerializer
 from rest_framework import viewsets
-from .models import Department, StudentBatch
-from .serializers import DepartmentSerializer, StudentBatchSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Program, Track, Batch
 from .serializers import ProgramSerializer, TrackSerializer, BatchSerializer
 from rest_framework import viewsets
 from .models import Department, StudentBatch, Batch, Program, Track, UnverifiedNationalID, VerifiedNationalID
@@ -42,6 +36,8 @@ class ProgramViewSet(viewsets.ModelViewSet):
             return Program.objects.none()  # Return empty queryset if no department
         
         return Program.objects.filter(department=department)
+    
+    
 class TrackViewSet(viewsets.ModelViewSet):
     serializer_class = TrackSerializer
     permission_classes = [IsAuthenticated]
@@ -66,6 +62,7 @@ class TrackViewSet(viewsets.ModelViewSet):
         # If no program_id, return all tracks related to programs in the department
         return Track.objects.filter(program__in=programs)
 
+
 @method_decorator(csrf_exempt, name="dispatch")
 class BatchViewSet(viewsets.ModelViewSet):
     serializer_class = BatchSerializer
@@ -74,58 +71,37 @@ class BatchViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         supervisor = self.request.user
         department = Department.objects.filter(supervisor=supervisor).first()
-        
         if not department:
-            return Batch.objects.none()  # Return empty queryset if no department
+            return Batch.objects.none()
 
-        # Get batches only for programs in this department
         batches = Batch.objects.filter(program__department=department)
-
-        # Filter by program_id if provided
         program_id = self.request.query_params.get("program_id")
         if program_id:
             batches = batches.filter(program_id=program_id)
-
-        # Filter by track_id if provided
         track_id = self.request.query_params.get("track_id")
         if track_id:
             batches = batches.filter(track_id=track_id)
-
-        # Filter by batch status if provided
-        status = self.request.query_params.get("status")
-        if status:
-            if status == "active":
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            if status_param == "active":
                 batches = batches.filter(active=True)
-            elif status == "ended":
+            elif status_param == "ended":
                 batches = batches.filter(active=False)
-
         return batches
 
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
 
-    def create(self, request, *args, **kwargs):
-        supervisor = request.user  # Get logged-in supervisor
-        program_id = request.data.get("program_id")  # Get Program ID from request
-        track_id = request.data.get("track_id")  # Get Track ID from request
-
-        # Validate program and track
-        try:
-            program = Program.objects.get(id=program_id)
-            track = Track.objects.get(id=track_id, program=program)  # Ensure track belongs to the program
-        except Program.DoesNotExist:
-            return Response({"error": "Program not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Track.DoesNotExist:
-            return Response({"error": "Track not found or does not belong to the specified program"}, status=status.HTTP_404_NOT_FOUND)
-
-        # Create the batch with program and track assigned
-        batch = Batch.objects.create(
-            name=request.data.get("name"),
-            supervisor=supervisor,
-            program=program,
-            track=track
+        # Allow only 'active' field to be updated
+        active = request.data.get("active")
+        if active is not None:
+            instance.active = active
+            instance.save()
+            return Response(self.get_serializer(instance).data)
+        return Response(
+            {"error": "Only 'active' field can be updated."},
+            status=status.HTTP_400_BAD_REQUEST
         )
-
-        return Response(BatchSerializer(batch).data, status=status.HTTP_201_CREATED)
-
 
 class StudentBatchViewSet(viewsets.ModelViewSet):
     queryset = StudentBatch.objects.all()
