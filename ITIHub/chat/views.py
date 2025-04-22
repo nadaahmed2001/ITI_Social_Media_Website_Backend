@@ -109,9 +109,36 @@ class PrivateChatUsersView(APIView):
             Q(sent_messages__receiver=user) | Q(received_messages__sender=user)
         ).distinct()
 
-        # Serialize the user data
-        user_data = [{"id": chat_user.id, "username": chat_user.username , "email": chat_user.email} for chat_user in chat_users]
-        return Response(user_data)
+        # Prepare the enhanced user data with last messages
+        enhanced_user_data = []
+        
+        for chat_user in chat_users:
+            # Get the last message between current user and chat_user
+            last_message = ChatMessage.objects.filter(
+                Q(sender=user, receiver=chat_user) | Q(sender=chat_user, receiver=user)
+            ).order_by('-timestamp').first()
+            
+            # Create user data object with last message
+            user_data = {
+                "id": chat_user.id, 
+                "username": chat_user.username, 
+                "email": chat_user.email
+            }
+            
+            if last_message:
+                user_data["last_message"] = {
+                    "id": last_message.id,
+                    "content": last_message.message,
+                    "sender_id": last_message.sender.id,
+                    "sender_username": last_message.sender.username,
+                    "timestamp": last_message.timestamp
+                }
+            else:
+                user_data["last_message"] = None
+                
+            enhanced_user_data.append(user_data)
+            
+        return Response(enhanced_user_data)
 
 # 🟢 Clear Group Chat Messages
 @method_decorator(csrf_exempt, name="dispatch")
