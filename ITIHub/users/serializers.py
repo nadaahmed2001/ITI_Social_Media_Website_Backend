@@ -20,12 +20,23 @@ User = get_user_model()
 
 
 class MinimalUserSerializer(serializers.ModelSerializer):
-    """Serializer for follower/following lists - basic info"""
+    """Serializer for follower/following lists - includes follow status"""
     profile_picture = serializers.URLField(source='profile.profile_picture', read_only=True)
     profile_id = serializers.UUIDField(source='profile.id', read_only=True)
+    is_following = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'profile_id', 'profile_picture']
+        fields = ['id', 'username', 'profile_id', 'profile_picture', 'is_following', 'first_name', 'last_name']
+
+    def get_is_following(self, obj):
+        """ Check if the *requesting* user follows the user (obj) being serialized. """
+        request = self.context.get('request', None)
+        # obj here is the User instance being listed (e.g., a follower)
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            # Check if a Follow record exists from request.user to obj
+            return Follow.objects.filter(follower=request.user, following=obj).exists()
+        return False
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

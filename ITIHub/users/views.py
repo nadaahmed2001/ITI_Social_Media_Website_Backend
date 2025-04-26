@@ -40,8 +40,13 @@ from .serializers import (
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q # Required for OR queries
+from rest_framework.pagination import PageNumberPagination 
 
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 15
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 
 
@@ -1021,23 +1026,41 @@ class FollowToggleView(APIView):
 
 
 class FollowerListView(generics.ListAPIView):
+    """Lists users who follow the specified profile's user."""
     serializer_class = MinimalUserSerializer
-    permission_classes = [permissions.AllowAny]
-    # pagination_class = YourPaginationClass # Add if needed
+    permission_classes = [permissions.AllowAny] # Publicly viewable lists
+    pagination_class = StandardResultsSetPagination # Add pagination
+
     def get_queryset(self):
-        profile_id = self.kwargs.get('profile_id') # param name matches urls.py
+        profile_id = self.kwargs.get('profile_id')
         target_profile = get_object_or_404(Profile, id=profile_id)
         target_user = target_profile.user
         follower_ids = Follow.objects.filter(following=target_user).values_list('follower_id', flat=True)
-        return User.objects.filter(id__in=follower_ids).select_related('profile')
+        # Order by username for consistent pagination results
+        return User.objects.filter(id__in=follower_ids).select_related('profile').order_by('username')
+
+    # *** ADD method to pass request context to serializer ***
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
 
 class FollowingListView(generics.ListAPIView):
+    """Lists users whom the specified profile's user is following."""
     serializer_class = MinimalUserSerializer
-    permission_classes = [permissions.AllowAny]
-    # pagination_class = YourPaginationClass # Add if needed
+    permission_classes = [permissions.AllowAny] # Publicly viewable lists
+    pagination_class = StandardResultsSetPagination # Add pagination
+
     def get_queryset(self):
-        profile_id = self.kwargs.get('profile_id') # param name matches urls.py
+        profile_id = self.kwargs.get('profile_id')
         target_profile = get_object_or_404(Profile, id=profile_id)
         target_user = target_profile.user
         following_ids = Follow.objects.filter(follower=target_user).values_list('following_id', flat=True)
-        return User.objects.filter(id__in=following_ids).select_related('profile')
+        # Order by username for consistent pagination results
+        return User.objects.filter(id__in=following_ids).select_related('profile').order_by('username')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
