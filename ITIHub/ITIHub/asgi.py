@@ -1,17 +1,22 @@
 import os
+import django
+
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-from chat.middleware import TokenAuthMiddlewareStack
-from chat.routing import websocket_urlpatterns
+from channels.auth import AuthMiddlewareStack
+from django.urls import path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ITIHub.settings')
+django.setup()
 
-# Initialize Django ASGI application
-django_asgi_app = get_asgi_application()
+# Import your WebSocket routing after Django setup
+from chat.routing import websocket_urlpatterns as chat_websocket_urlpatterns
 
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": TokenAuthMiddlewareStack(
-        URLRouter(websocket_urlpatterns)
+    "http": get_asgi_application(),
+    "websocket": AuthMiddlewareStack(
+        URLRouter(
+            chat_websocket_urlpatterns
+        )
     ),
 })

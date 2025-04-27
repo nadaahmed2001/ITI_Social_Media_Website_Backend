@@ -2,6 +2,11 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from users.views import ProfileSearchView
+from django.http import JsonResponse
+
+
+def health_check(request):
+    return JsonResponse({"status": "healthy"})
 
 
 urlpatterns = [
@@ -23,4 +28,5 @@ urlpatterns = [
 
         
     ])),
+    path('health/', health_check, name='health_check'),
 ]

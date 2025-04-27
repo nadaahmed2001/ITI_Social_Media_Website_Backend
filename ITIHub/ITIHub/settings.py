@@ -92,6 +92,7 @@ ASGI_APPLICATION = 'ITIHub.asgi.application'
 # Database Configuration
 # Use Railway's DATABASE_URL if available
 if os.environ.get('DATABASE_URL'):
+    # Simple configuration using dj_database_url
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
@@ -99,6 +100,7 @@ if os.environ.get('DATABASE_URL'):
         )
     }
 else:
+    # Local database configuration
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -108,19 +110,9 @@ else:
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
             'OPTIONS': {
-                'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),  # Changed from 'verify-full' to 'prefer' for development
+                'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
                 'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
                 'client_encoding': 'UTF8',
-                'default_transaction_isolation': 'read committed',
-                'statement_timeout': int(os.environ.get('DB_STATEMENT_TIMEOUT', '30000')),
-                'timezone': 'UTC',
-                'application_name': 'itihub',
-            },
-            'ATOMIC_REQUESTS': True,
-            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '300')),
-            'CONN_HEALTH_CHECKS': True,
-            'TEST': {
-                'NAME': 'test_itihub',
             },
         }
     }
