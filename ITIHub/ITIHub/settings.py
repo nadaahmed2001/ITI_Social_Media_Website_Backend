@@ -1,13 +1,20 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import os
-import dj_database_url
+import sys
+from urllib.parse import urlparse
 
 # Load environment variables early
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Print database URL for debugging (remove in production)
+db_url = os.environ.get('DATABASE_URL', '')
+print(f"DATABASE_URL is {'set' if db_url else 'NOT SET'}")
+if db_url:
+    print(f"Database URL first few chars: {db_url[:15]}...")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev-only-change-in-production')
@@ -16,7 +23,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev-o
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway.app').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway.app,.neon.tech').split(',')
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
@@ -89,49 +96,47 @@ TEMPLATES = [
 WSGI_APPLICATION = "ITIHub.wsgi.application"
 ASGI_APPLICATION = 'ITIHub.asgi.application'
 
-# Database Configuration
-# Use Railway's DATABASE_URL if available
-if os.environ.get('DATABASE_URL'):
-    # Simple configuration using dj_database_url
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('DATABASE_URL'),
-            conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', '300')),
-        )
-    }
-else:
-    # Local database configuration
+# Database Configuration for Neon PostgreSQL
+try:
+    tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+    print(f"Parsed database: host={tmpPostgres.hostname}, db={tmpPostgres.path.replace('/', '')}")
+    
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('DB_NAME'),
-            'USER': os.environ.get('DB_USER'),
-            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'NAME': tmpPostgres.path.replace('/', ''),
+            'USER': tmpPostgres.username,
+            'PASSWORD': tmpPostgres.password,
+            'HOST': tmpPostgres.hostname,
+            'PORT': tmpPostgres.port or 5432,
+            'OPTIONS': {
+                'sslmode': 'require',
+            }
+        }
+    }
+except Exception as e:
+    print(f"Error setting up database: {str(e)}")
+    # Fallback to local database if DATABASE_URL parsing fails
+    print("WARNING: Using local database configuration!")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'itihub'),
+            'USER': os.environ.get('DB_USER', 'itihubuser'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'password'),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
-            'OPTIONS': {
-                'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
-                'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
-                'client_encoding': 'UTF8',
-            },
         }
     }
 
-# Add SSL certificate paths if using verify-ca or verify-full in production
-if os.environ.get('DB_SSLMODE') in ['verify-ca', 'verify-full']:
-    if os.environ.get('DB_SSLROOTCERT'):
-        DATABASES['default']['OPTIONS']['sslrootcert'] = os.environ.get('DB_SSLROOTCERT')
-    if os.environ.get('DB_SSLCERT'):
-        DATABASES['default']['OPTIONS']['sslcert'] = os.environ.get('DB_SSLCERT')
-    if os.environ.get('DB_SSLKEY'):
-        DATABASES['default']['OPTIONS']['sslkey'] = os.environ.get('DB_SSLKEY')
-
-# Redis configuration for channels (update to use Railway's REDIS_URL if available)
+# Redis configuration for channels
+redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
+print(f"Using REDIS_URL: {redis_url[:10]}...")  # Debug info
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")],
+            "hosts": [redis_url],
         },
     },
 }

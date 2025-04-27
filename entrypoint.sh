@@ -10,6 +10,13 @@ echo "- SECRET_KEY: ${SECRET_KEY:0:3}..."
 echo "- DEBUG: $DEBUG"
 echo "- DATABASE_URL present: $([ -n "$DATABASE_URL" ] && echo 'Yes' || echo 'No')"
 echo "- REDIS_URL present: $([ -n "$REDIS_URL" ] && echo 'Yes' || echo 'No')"
+echo "- Current working directory: $(pwd)"
+
+# Copy the .env file from project root to ITIHub directory if it doesn't exist
+if [ -f /app/.env ] && [ ! -f /app/ITIHub/.env ]; then
+    echo "Copying .env file from /app/.env to /app/ITIHub/.env"
+    cp /app/.env /app/ITIHub/.env
+fi
 
 # Navigate to the directory containing manage.py
 echo "Current directory before cd: $(pwd)"
@@ -17,6 +24,15 @@ cd /app/ITIHub
 echo "Changed to directory: $(pwd)"
 echo "Listing directory contents:"
 ls -la
+
+# Make sure DATABASE_URL is accessible in the Django environment
+if [ -n "$DATABASE_URL" ]; then
+    echo "DATABASE_URL is set in the environment"
+    # Export it again to make sure it's accessible
+    export DATABASE_URL
+else
+    echo "WARNING: DATABASE_URL is NOT set in the environment!"
+fi
 
 # Wait for database to be ready
 echo "Waiting for database to be ready..."
@@ -31,7 +47,9 @@ import os
 db_url = os.environ.get('DATABASE_URL', '')
 if not db_url:
     print('DATABASE_URL not set, skipping database check')
-    sys.exit(0)
+    sys.exit(1)
+
+print(f'Using database URL: {db_url[:10]}...')
 
 # Parse connection parameters from the URL
 result = urlparse(db_url)
@@ -40,6 +58,8 @@ user = result.username
 password = result.password
 host = result.hostname
 port = result.port
+
+print(f'Connecting to: {host}:{port}/{dbname} as {user}')
 
 # Try to connect to the database
 retries = 10
