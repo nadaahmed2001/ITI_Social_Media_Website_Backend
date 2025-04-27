@@ -12,10 +12,22 @@ echo "- DATABASE_URL present: $([ -n "$DATABASE_URL" ] && echo 'Yes' || echo 'No
 echo "- REDIS_URL present: $([ -n "$REDIS_URL" ] && echo 'Yes' || echo 'No')"
 echo "- Current working directory: $(pwd)"
 
-# Copy the .env file from project root to ITIHub directory if it doesn't exist
-if [ -f /app/.env ] && [ ! -f /app/ITIHub/.env ]; then
+# Ensure ITIHub directory exists
+mkdir -p /app/ITIHub
+
+# Copy or create .env file
+if [ -f /app/.env ]; then
     echo "Copying .env file from /app/.env to /app/ITIHub/.env"
     cp /app/.env /app/ITIHub/.env
+else
+    echo "No .env file found in /app, creating minimal .env file"
+    cat > /app/ITIHub/.env << EOF
+# Generated minimal .env file
+DATABASE_URL=${DATABASE_URL:-""}
+SECRET_KEY=${SECRET_KEY:-"django-insecure-default-key"}
+DEBUG=${DEBUG:-False}
+ALLOWED_HOSTS=${ALLOWED_HOSTS:-"localhost,127.0.0.1,.up.railway.app"}
+EOF
 fi
 
 # Navigate to the directory containing manage.py
@@ -37,8 +49,11 @@ else
     # Try to get it from .env file
     if [ -f .env ]; then
         echo "Trying to read DATABASE_URL from .env file"
-        export DATABASE_URL=$(grep DATABASE_URL .env | cut -d '=' -f2- | sed 's/^[ \t]*//;s/[ \t]*$//')
-        echo "Found DATABASE_URL in .env: ${DATABASE_URL:0:20}..."
+        DB_URL=$(grep DATABASE_URL .env | cut -d '=' -f2- | sed 's/^[ \t]*//;s/[ \t]*$//')
+        if [ -n "$DB_URL" ]; then
+            export DATABASE_URL="$DB_URL"
+            echo "Found DATABASE_URL in .env: ${DATABASE_URL:0:20}..."
+        fi
     else
         echo "No .env file found!"
     fi
@@ -116,10 +131,10 @@ fi
 PORT=${PORT:-8000}
 echo "Starting server on port $PORT..."
 
-# Add a health check endpoint
+# Add a health check endpoint for Railway
 echo "Creating health check endpoint..."
-mkdir -p /app/ITIHub/health/
-cat > /app/ITIHub/health/views.py << 'EOF'
+mkdir -p /app/ITIHub/ITIHub/
+cat > /app/ITIHub/ITIHub/health_check.py << 'EOF'
 from django.http import JsonResponse
 
 def health_check(request):

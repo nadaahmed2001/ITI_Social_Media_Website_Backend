@@ -17,14 +17,17 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Install additional WebSocket dependencies
 RUN pip install daphne channels channels_redis
 
-# Copy .env file first (if it exists)
-COPY .env /app/.env
+# Create an empty .env file if needed
+RUN touch /app/.env
 
-# Copy project
+# Copy project (this will overwrite the empty .env if a real one exists)
 COPY . /app/
 
-# Make sure the .env file is copied to the ITIHub directory
-RUN if [ -f /app/.env ]; then cp /app/.env /app/ITIHub/.env; fi
+# Make sure the ITIHub directory exists
+RUN mkdir -p /app/ITIHub
+
+# Copy the .env file to the ITIHub directory
+RUN cp /app/.env /app/ITIHub/.env
 
 # Make the entry point script executable
 RUN chmod +x entrypoint.sh
