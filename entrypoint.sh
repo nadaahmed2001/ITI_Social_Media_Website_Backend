@@ -11,8 +11,10 @@ echo "- DEBUG: $DEBUG"
 echo "- DATABASE_URL present: $([ -n "$DATABASE_URL" ] && echo 'Yes' || echo 'No')"
 echo "- REDIS_URL present: $([ -n "$REDIS_URL" ] && echo 'Yes' || echo 'No')"
 
-# Change to the Django project directory
-cd /app/ITIHub
+# We're already in the correct directory (/app)
+echo "Current directory: $(pwd)"
+echo "Listing directory contents:"
+ls -la
 
 # Apply database migrations
 echo "Applying database migrations..."
