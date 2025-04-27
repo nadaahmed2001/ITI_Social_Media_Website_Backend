@@ -1,43 +1,37 @@
 from pathlib import Path
 from dotenv import load_dotenv
+import os
+
+# Load environment variables early
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-erj+_g2fu16q8xfak*u1@+%$0^g(@r_u&s64qj*spv&+b3xi-4')
 
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+
+# Use environment variables for allowed hosts
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+# User model configuration
 AUTH_USER_MODEL = "users.User"
-LOGIN_URL = '/users/student/login/'  # Redirect users to login page if not authenticated
-LOGIN_REDIRECT_URL = "home"  # Redirect after login
-LOGOUT_REDIRECT_URL = "login"  # Redirect after logout
+LOGIN_URL = '/users/student/login/'
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
 
+# Authentication configuration
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     # "users.backends.CustomAuthBackend",  # If using custom backend
 ]
 
-
-
-import os
-from datetime import timedelta
-
-
+# Media configuration
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-erj+_g2fu16q8xfak*u1@+%$0^g(@r_u&s64qj*spv&+b3xi-4"
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-
-
-DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
 
 # Application definition
 INSTALLED_APPS = [
@@ -60,82 +54,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
 ]
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # React frontend
-    "http://127.0.0.1:5173",  # React frontend
-]
-
-CORS_ALLOW_ALL_ORIGINS = True
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.TokenAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # Only authenticated users can access
-        'rest_framework.permissions.AllowAny'
-    ]
-}
-
-
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
-    "ROTATE_REFRESH_TOKENS": False,
-    "BLACKLIST_AFTER_ROTATION": False,
-    "UPDATE_LAST_LOGIN": False,
-
-    "ALGORITHM": "HS256",
-    "VERIFYING_KEY": "",
-    "AUDIENCE": None,
-    "ISSUER": None,
-    "JSON_ENCODER": None,
-    "JWK_URL": None,
-    "LEEWAY": 0,
-
-    "AUTH_HEADER_TYPES": ("Bearer",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "USER_ID_FIELD": "id",
-    "USER_ID_CLAIM": "user_id",
-    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
-
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-    "TOKEN_TYPE_CLAIM": "token_type",
-    # "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
-
-    "JTI_CLAIM": "jti",
-
-    "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
-    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
-    "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
-
-    "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
-    "TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSerializer",
-    "TOKEN_VERIFY_SERIALIZER": "rest_framework.simplejwt.serializers.TokenVerifySerializer",
-    "TOKEN_BLACKLIST_SERIALIZER": "rest_framework.simplejwt.serializers.TokenBlacklistSerializer",
-    "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
-    "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework.simplejwt.serializers.TokenRefreshSlidingSerializer",
-}
-
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:5173",  # React frontend
-#     "http://127.0.0.1:5173",
-# ]
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") 
-
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = [
-    'content-type',
-    'authorization',
-    'x-csrftoken',
-    'x-requested-with',
-    'accept',
-    'withcredentials'
-]
-CORS_ALLOW_ALL_ORIGINS = True
 
 MIDDLEWARE = [ 
     "corsheaders.middleware.CorsMiddleware",
@@ -146,7 +64,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'corsheaders.middleware.CorsMiddleware'
 ]
 
 ROOT_URLCONF = "ITIHub.urls"
@@ -186,51 +103,113 @@ default_app_config = 'ITIHub.apps.ITIHubConfig'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),  # Changed from 'verify-full' to 'prefer' for development
+            'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
+            'client_encoding': 'UTF8',
+            'default_transaction_isolation': 'read committed',
+            'statement_timeout': int(os.environ.get('DB_STATEMENT_TIMEOUT', '30000')),
+            'timezone': 'UTC',
+            'application_name': 'itihub',
+        },
+        'ATOMIC_REQUESTS': True,
+        'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '300')),
+        'CONN_HEALTH_CHECKS': True,
+        'TEST': {
+            'NAME': 'test_itihub',
+        },
     }
 }
 
+# Add SSL certificate paths if using verify-ca or verify-full in production
+if os.environ.get('DB_SSLMODE') in ['verify-ca', 'verify-full']:
+    if os.environ.get('DB_SSLROOTCERT'):
+        DATABASES['default']['OPTIONS']['sslrootcert'] = os.environ.get('DB_SSLROOTCERT')
+    if os.environ.get('DB_SSLCERT'):
+        DATABASES['default']['OPTIONS']['sslcert'] = os.environ.get('DB_SSLCERT')
+    if os.environ.get('DB_SSLKEY'):
+        DATABASES['default']['OPTIONS']['sslkey'] = os.environ.get('DB_SSLKEY')
 
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
+# Cloudinary configuration from environment variables - this is the active configuration
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'dsaznefnt'),
+    'API_KEY': os.environ.get('CLOUDINARY_API_KEY', '974213622245136'),
+    'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', 'Q1bg9XZJVRD6gTVad7lfPouOow0'),
+    'SECURE': True,
+    # Optional production settings:
+    'FOLDER': os.environ.get('CLOUDINARY_FOLDER', 'itihub_media'),  # Organize uploads in a specific folder
+    'RESOURCE_TYPE': os.environ.get('CLOUDINARY_RESOURCE_TYPE', 'auto'),  # 'image', 'video', 'raw', 'auto'
+    'OVERWRITE': os.environ.get('CLOUDINARY_OVERWRITE', 'False').lower() == 'true',  # Prevent overwriting files with same name
+}
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+# Tell Django to use Cloudinary for media file storage
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Optionally, for static files in production:
+if not DEBUG:
+    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
+    STATIC_ROOT = BASE_DIR / 'staticfiles_collected'  # For collectstatic
+
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'testiticommunity@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'pzsquwhzxdpxjjzd')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'testiticommunity@gmail.com')
+
+# Site configuration
+SITE_NAME = os.environ.get('SITE_NAME', 'ITIHub')
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', 'testiticommunity@gmail.com')
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')
+BACKEND_BASE_URL = os.environ.get('BACKEND_BASE_URL', 'http://localhost:8000')
+LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png")
+
+# OpenAI API configuration
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
+
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-csrftoken',
+    'x-requested-with',
+    'accept',
+    'withcredentials'
 ]
+# In production, this should be False and specific origins should be set
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
 
+# Rest of settings remain unchanged
 
 # =============================================== Cloudinary Configuration ===============================================
 # !! Use Environment Variables in production for keys/secrets !!
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dsaznefnt', 
-    'API_KEY': '974213622245136',       
-    'API_SECRET': 'Q1bg9XZJVRD6gTVad7lfPouOow0',
-    'SECURE': True, # Use HTTPS
-    
-    #  ============ To be used in production ================================
-    # 'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'YOUR_CLOUD_NAME'), # Replace default with yours or set env var
-    # 'API_KEY': os.environ.get('CLOUDINARY_API_KEY', 'YOUR_API_KEY'),        # Replace default with yours or set env var
-    # 'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', 'YOUR_API_SECRET'), # Replace default with yours or set env var
-    # 'SECURE': True, # Use HTTPS
-    # Optional settings:
-    # 'FOLDER': 'your_app_media', # Organize uploads in a specific Cloudinary folder
-    # 'RESOURCE_TYPE': 'image', # Default, can be 'video', 'raw', 'auto'
-    # 'OVERWRITE': False, # Prevent overwriting files with same name? Default is usually true.
-    # 'TAGS': ['app_media'], # Add tags to uploaded assets
-}
+# CLOUDINARY_STORAGE = {
+#     'CLOUD_NAME': 'dsaznefnt', 
+#     'API_KEY': '974213622245136',       
+#     'API_SECRET': 'Q1bg9XZJVRD6gTVad7lfPouOow0',
+#     'SECURE': True, # Use HTTPS
+#     
+#     #  ============ To be used in production ================================
+#     # 'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'YOUR_CLOUD_NAME'), # Replace default with yours or set env var
+#     # 'API_KEY': os.environ.get('CLOUDINARY_API_KEY', 'YOUR_API_KEY'),        # Replace default with yours or set env var
+#     # 'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET', 'YOUR_API_SECRET'), # Replace default with yours or set env var
+#     # 'SECURE': True, # Use HTTPS
+#     # Optional settings:
+#     # 'FOLDER': 'your_app_media', # Organize uploads in a specific Cloudinary folder
+#     # 'RESOURCE_TYPE': 'image', # Default, can be 'video', 'raw', 'auto'
+#     # 'OVERWRITE': False, # Prevent overwriting files with same name? Default is usually true.
+#     # 'TAGS': ['app_media'], # Add tags to uploaded assets
+# }
 
 # --- Default File Storage ---
 # Tell Django to use Cloudinary for all media file uploads
@@ -287,21 +266,3 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-
-load_dotenv()
-
-# forget password email settings
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.gmail.com"
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-
-
-# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD') 
-
-
-FRONTEND_BASE_URL = "http://localhost:5173"
-
-OTP_EXPIRATION_MINUTES = 10
