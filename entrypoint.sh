@@ -28,10 +28,20 @@ ls -la
 # Make sure DATABASE_URL is accessible in the Django environment
 if [ -n "$DATABASE_URL" ]; then
     echo "DATABASE_URL is set in the environment"
+    echo "DATABASE_URL starts with: ${DATABASE_URL:0:20}..."
     # Export it again to make sure it's accessible
     export DATABASE_URL
 else
     echo "WARNING: DATABASE_URL is NOT set in the environment!"
+    
+    # Try to get it from .env file
+    if [ -f .env ]; then
+        echo "Trying to read DATABASE_URL from .env file"
+        export DATABASE_URL=$(grep DATABASE_URL .env | cut -d '=' -f2- | sed 's/^[ \t]*//;s/[ \t]*$//')
+        echo "Found DATABASE_URL in .env: ${DATABASE_URL:0:20}..."
+    else
+        echo "No .env file found!"
+    fi
 fi
 
 # Wait for database to be ready
@@ -49,7 +59,7 @@ if not db_url:
     print('DATABASE_URL not set, skipping database check')
     sys.exit(1)
 
-print(f'Using database URL: {db_url[:10]}...')
+print(f'Using database URL: {db_url[:20]}...')
 
 # Parse connection parameters from the URL
 result = urlparse(db_url)
@@ -57,7 +67,7 @@ dbname = result.path[1:]
 user = result.username
 password = result.password
 host = result.hostname
-port = result.port
+port = result.port or 5432
 
 print(f'Connecting to: {host}:{port}/{dbname} as {user}')
 
@@ -71,7 +81,8 @@ while retries > 0:
             user=user,
             password=password,
             host=host,
-            port=port
+            port=port,
+            sslmode='require'
         )
         conn.close()
         print('Database connection successful!')
@@ -104,6 +115,16 @@ fi
 # Determine port for server
 PORT=${PORT:-8000}
 echo "Starting server on port $PORT..."
+
+# Add a health check endpoint
+echo "Creating health check endpoint..."
+mkdir -p /app/ITIHub/health/
+cat > /app/ITIHub/health/views.py << 'EOF'
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({"status": "healthy"})
+EOF
 
 # Check if we should run with WebSocket support
 if [ "${ENABLE_WEBSOCKET:-true}" = "true" ]; then

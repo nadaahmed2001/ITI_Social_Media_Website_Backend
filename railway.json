@@ -9,6 +9,12 @@
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/health/",
-    "healthcheckTimeout": 300
+    "healthcheckTimeout": 300,
+    "env": {
+      "DATABASE_URL": "${DATABASE_URL}",
+      "DEBUG": "False",
+      "ALLOWED_HOSTS": "*.up.railway.app,*.neon.tech,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech",
+      "CORS_ALLOW_ALL_ORIGINS": "True"
+    }
   }
 }
