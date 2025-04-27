@@ -24,6 +24,9 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway.app,.neon.tech').split(',')
+# Add healthcheck.railway.app if not already present
+if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
