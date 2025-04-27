@@ -1,6 +1,7 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import dj_database_url
 
 # Load environment variables early
 load_dotenv()
@@ -15,7 +16,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', '')
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway.app').split(',')
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [ 
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add whitenoise middleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -87,14 +89,102 @@ TEMPLATES = [
 WSGI_APPLICATION = "ITIHub.wsgi.application"
 ASGI_APPLICATION = 'ITIHub.asgi.application'
 
+# Database Configuration
+# Use Railway's DATABASE_URL if available, otherwise use the previous configuration
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=int(os.environ.get('DB_CONN_MAX_AGE', '300')),
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME'),
+            'USER': os.environ.get('DB_USER'),
+            'PASSWORD': os.environ.get('DB_PASSWORD'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'OPTIONS': {
+                'sslmode': os.environ.get('DB_SSLMODE', 'prefer'),
+                'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
+                'client_encoding': 'UTF8',
+                'default_transaction_isolation': 'read committed',
+                'statement_timeout': int(os.environ.get('DB_STATEMENT_TIMEOUT', '30000')),
+                'timezone': 'UTC',
+                'application_name': 'itihub',
+            },
+            'ATOMIC_REQUESTS': True,
+            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '300')),
+            'CONN_HEALTH_CHECKS': True,
+            'TEST': {
+                'NAME': 'test_itihub',
+            },
+        }
+    }
+
+# Redis configuration for channels (update to use Railway's REDIS_URL if available)
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")],
         },
     },
 }
+
+# Static files configuration for production
+STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Add whitenoise for static files serving in production
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add whitenoise middleware
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# Configure whitenoise
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# ROOT_URLCONF = "ITIHub.urls"
+
+# TEMPLATES = [
+#     {
+#         "BACKEND": "django.template.backends.django.DjangoTemplates",
+#         "DIRS": [],
+#         "APP_DIRS": True,
+#         "OPTIONS": {
+#             "context_processors": [
+#                 "django.template.context_processors.debug",
+#                 "django.template.context_processors.request",
+#                 "django.contrib.auth.context_processors.auth",
+#                 "django.contrib.messages.context_processors.messages",
+#             ],
+#         },
+#     },
+# ]
+
+# WSGI_APPLICATION = "ITIHub.wsgi.application"
+# ASGI_APPLICATION = 'ITIHub.asgi.application'
+
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [("127.0.0.1", 6379)],
+#         },
+#     },
+# }
 default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 

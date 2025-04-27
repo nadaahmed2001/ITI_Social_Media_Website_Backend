@@ -1,1 +1,1 @@
-web: gunicorn ITIHub.wsgi --log-file -
+web: python manage.py migrate && daphne -b 0.0.0.0 -p $PORT ITIHub.asgi:application
