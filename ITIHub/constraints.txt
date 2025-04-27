@@ -1,0 +1,16 @@
+Django>=4.2,<5.0
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+python-dotenv
+dj-database-url
+psycopg2-binary
+whitenoise
+gunicorn
+django-extensions
+channels
+channels-redis
+cloudinary
+django-cloudinary-storage
+openai
+# Add any other dependencies your project uses
