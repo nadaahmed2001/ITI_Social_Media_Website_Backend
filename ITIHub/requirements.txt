@@ -1,0 +1,15 @@
+# Add gunicorn for production deployment
+gunicorn>=21.2.0
+
+# Add other project dependencies here if not already included
+django
+python-dotenv
+psycopg2-binary
+cloudinary
+django-cloudinary-storage
+channels
+channels-redis
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-extensions

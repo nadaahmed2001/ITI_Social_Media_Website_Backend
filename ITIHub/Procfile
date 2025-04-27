@@ -1,0 +1,1 @@
+web: gunicorn ITIHub.wsgi --log-file -

@@ -228,22 +228,24 @@ CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower
 # ----------------------------------------- Site ID ----------------------------------------
 SITE_ID = 1
 
-# ================================================ Email Config =======================================================
-SITE_NAME = 'ITIHub'
+# The email configuration is already defined above; removing duplicates
 EMAIL_CHANGE_EXPIRATION_HOURS = 0.01
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'testiticommunity@gmail.com'
-EMAIL_HOST_PASSWORD = 'pzsquwhzxdpxjjzd'
-DEFAULT_FROM_EMAIL = 'testiticommunity@gmail.com'
 
-SUPPORT_EMAIL = "testiticommunity@gmail.com"
-FRONTEND_BASE_URL = 'http://localhost:5173' 
-BACKEND_BASE_URL = 'http://localhost:8000' 
-LOGO_URL = "https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png"
-SITE_NAME = "ITIHub"
+# These are redundant as they're already set from environment variables above
+# SITE_NAME = 'ITIHub'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = 'testiticommunity@gmail.com'
+# EMAIL_HOST_PASSWORD = 'pzsquwhzxdpxjjzd'
+# DEFAULT_FROM_EMAIL = 'testiticommunity@gmail.com'
+# SUPPORT_EMAIL = "testiticommunity@gmail.com"
+# FRONTEND_BASE_URL = 'http://localhost:5173' 
+# BACKEND_BASE_URL = 'http://localhost:8000' 
+# LOGO_URL = "https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png"
+# SITE_NAME = "ITIHub"
+
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
