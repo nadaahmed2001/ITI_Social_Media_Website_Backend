@@ -1,13 +1,11 @@
 from django.http import JsonResponse
-from django.urls import path, include
-from django.contrib import admin
+from django.urls import path
 
 # Health check endpoint for Railway
 def health_check(request):
-    """Simple health check endpoint for Railway"""
     return JsonResponse({"status": "healthy"})
 
-# Add this to the beginning of your urlpatterns
+# Add this at the beginning of your urlpatterns list
 urlpatterns = [
     path('health/', health_check, name='health_check'),
     
