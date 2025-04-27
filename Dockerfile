@@ -1,10 +1,12 @@
-FROM python:3.10-slim
+FROM python:3.10-slim-bookworm
+
+# Upgrade system packages to reduce vulnerabilities
+RUN apt-get update && apt-get upgrade -y && apt-get clean
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
-ENV SECRET_KEY="django-insecure-default-key-for-dev-only-change-in-production"
 ENV ENABLE_WEBSOCKET=true
 
 # Default DATABASE_URL - will be overridden by environment variables if provided
@@ -20,9 +22,9 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Install additional WebSocket dependencies
 RUN pip install daphne channels channels_redis
 
-# Create .env file with DATABASE_URL
+# Create .env file with DATABASE_URL and optionally SECRET_KEY
 RUN echo "DATABASE_URL=${DATABASE_URL}" > /app/.env && \
-    echo "SECRET_KEY=${SECRET_KEY}" >> /app/.env && \
+    if [ ! -z "$SECRET_KEY" ]; then echo "SECRET_KEY=${SECRET_KEY}" >> /app/.env; fi && \
     echo "DEBUG=False" >> /app/.env && \
     echo "ALLOWED_HOSTS=localhost,127.0.0.1,.up.railway.app,.neon.tech" >> /app/.env && \
     echo "ENABLE_WEBSOCKET=true" >> /app/.env

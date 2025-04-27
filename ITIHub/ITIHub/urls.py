@@ -1,15 +1,21 @@
+from django.contrib import admin  # This was missing
+from django.urls import path, include
 from django.http import JsonResponse
-from django.urls import path
+
+# Add missing imports
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from users.views import ProfileSearchView
 
 # Health check endpoint for Railway
 def health_check(request):
+    """Health check endpoint for Railway"""
     return JsonResponse({"status": "healthy"})
 
-# Add this at the beginning of your urlpatterns list
 urlpatterns = [
+    # Add the health check endpoint at the beginning
     path('health/', health_check, name='health_check'),
     
-    # Keep your existing paths
+    # Now the admin path will work properly
     path("admin/", admin.site.urls),  # Admin panel
     
     # Authentication & Users
