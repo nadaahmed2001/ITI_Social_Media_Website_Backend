@@ -7,20 +7,20 @@ ENV PORT=8000
 ENV SECRET_KEY="django-insecure-default-key-for-dev-only-change-in-production"
 
 # Set working directory
-WORKDIR /app
+WORKDIR /ITIHub
 
 # Install dependencies
-COPY requirements.txt /app/
+COPY requirements.txt /ITIHub/
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Copy project
-COPY . /app/
+COPY . /ITIHub/
 
 # Make the entry point script executable
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /ITIHub/entrypoint.sh
 
 # Expose the port
 EXPOSE $PORT
 
 # Run the application
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/ITIHub/entrypoint.sh"]
