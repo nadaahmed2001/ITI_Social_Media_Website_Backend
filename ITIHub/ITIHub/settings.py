@@ -210,3 +210,6 @@ EMAIL_CHANGE_EXPIRATION_HOURS = 0.01
 
 # Default app config
 default_app_config = 'ITIHub.apps.ITIHubConfig'
+
+# Add this at the end of the file or with other Django settings
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
