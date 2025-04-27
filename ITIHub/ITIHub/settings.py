@@ -90,7 +90,7 @@ WSGI_APPLICATION = "ITIHub.wsgi.application"
 ASGI_APPLICATION = 'ITIHub.asgi.application'
 
 # Database Configuration
-# Use Railway's DATABASE_URL if available, otherwise use the previous configuration
+# Use Railway's DATABASE_URL if available
 if os.environ.get('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
@@ -115,12 +115,6 @@ else:
                 'statement_timeout': int(os.environ.get('DB_STATEMENT_TIMEOUT', '30000')),
                 'timezone': 'UTC',
                 'application_name': 'itihub',
-            },
-            'ATOMIC_REQUESTS': True,
-            'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '300')),
-            'CONN_HEALTH_CHECKS': True,
-            'TEST': {
-                'NAME': 'test_itihub',
             },
         }
     }
@@ -320,41 +314,3 @@ SITE_ID = 1
 
 # The email configuration is already defined above; removing duplicates
 EMAIL_CHANGE_EXPIRATION_HOURS = 0.01
-
-# These are redundant as they're already set from environment variables above
-# SITE_NAME = 'ITIHub'
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = 'testiticommunity@gmail.com'
-# EMAIL_HOST_PASSWORD = 'pzsquwhzxdpxjjzd'
-# DEFAULT_FROM_EMAIL = 'testiticommunity@gmail.com'
-# SUPPORT_EMAIL = "testiticommunity@gmail.com"
-# FRONTEND_BASE_URL = 'http://localhost:5173' 
-# BACKEND_BASE_URL = 'http://localhost:8000' 
-# LOGO_URL = "https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png"
-# SITE_NAME = "ITIHub"
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.1/topics/i18n/
-
-LANGUAGE_CODE = "en-us"
-
-TIME_ZONE = "UTC"
-
-USE_I18N = True
-
-USE_TZ = True
-
-# LOGIN_URL = '/login/'  # Redirect unauthenticated users to login
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
-STATIC_URL = "static/"
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
