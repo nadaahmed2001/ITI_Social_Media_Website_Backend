@@ -1,15 +1,16 @@
-from django.contrib import admin
-from django.urls import path, include
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from users.views import ProfileSearchView
 from django.http import JsonResponse
-
+from django.urls import path, include
+from django.contrib import admin
 
 def health_check(request):
+    """Health check endpoint for Railway"""
     return JsonResponse({"status": "healthy"})
 
-
 urlpatterns = [
+    # Add this at the beginning of your urlpatterns list
+    path('health/', health_check, name='health_check'),
+    
+    # Keep your existing paths
     path("admin/", admin.site.urls),  # Admin panel
     
     # Authentication & Users
@@ -28,5 +29,4 @@ urlpatterns = [
 
         
     ])),
-    path('health/', health_check, name='health_check'),
 ]

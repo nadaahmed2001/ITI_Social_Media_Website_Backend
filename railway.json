@@ -14,7 +14,13 @@
       "DATABASE_URL": "${DATABASE_URL}",
       "DEBUG": "False",
       "ALLOWED_HOSTS": "*.up.railway.app,*.neon.tech,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech",
-      "CORS_ALLOW_ALL_ORIGINS": "True"
+      "CORS_ALLOW_ALL_ORIGINS": "True",
+      "ENABLE_WEBSOCKET": "true",
+      "PYTHONUNBUFFERED": "1",
+      "SECRET_KEY": "${SECRET_KEY}",
+      "DJANGO_SUPERUSER_USERNAME": "admin",
+      "DJANGO_SUPERUSER_PASSWORD": "${ADMIN_PASSWORD}",
+      "DJANGO_SUPERUSER_EMAIL": "admin@example.com"
     }
   }
 }
