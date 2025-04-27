@@ -2,12 +2,17 @@
 
 set -e
 
+echo "Starting entrypoint script..."
+
 # Print environment variables for debugging (remove in production)
 echo "Environment variables:"
 echo "- SECRET_KEY: ${SECRET_KEY:0:3}..."
 echo "- DEBUG: $DEBUG"
-echo "- DATABASE_URL: ${DATABASE_URL:0:15}..."
-echo "- REDIS_URL: ${REDIS_URL:0:15}..."
+echo "- DATABASE_URL present: $([ -n "$DATABASE_URL" ] && echo 'Yes' || echo 'No')"
+echo "- REDIS_URL present: $([ -n "$REDIS_URL" ] && echo 'Yes' || echo 'No')"
+
+# Change to the Django project directory
+cd /ITIHub
 
 # Apply database migrations
 echo "Applying database migrations..."

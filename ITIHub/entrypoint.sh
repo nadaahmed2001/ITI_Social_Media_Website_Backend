@@ -1,13 +1,28 @@
 #!/bin/bash
 
-# Navigate to the ITIHub directory where manage.py is located
-cd /app/ITIHub
+set -e
 
-# Collect static files
-python manage.py collectstatic --noinput
+# Print environment variables for debugging (remove in production)
+echo "Environment variables:"
+echo "- SECRET_KEY: ${SECRET_KEY:0:3}..."
+echo "- DEBUG: $DEBUG"
+echo "- DATABASE_URL: ${DATABASE_URL:0:15}..."
+echo "- REDIS_URL: ${REDIS_URL:0:15}..."
 
 # Apply database migrations
-python manage.py migrate
+python /ITIHub/manage.py migrate
 
-# Start server
-gunicorn ITIHub.wsgi:application --bind 0.0.0.0:$PORT
+# Collect static files
+python /ITIHub/manage.py collectstatic --noinput
+
+# Create superuser if specified in environment variables
+if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ]; then
+    python /ITIHub/manage.py createsuperuser --noinput
+fi
+
+# Determine port for gunicorn
+PORT=${PORT:-8000}
+echo "Starting server on port $PORT..."
+
+# Start Gunicorn
+exec gunicorn ITIHub.wsgi:application --chdir /ITIHub --bind 0.0.0.0:$PORT --workers 4
