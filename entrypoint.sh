@@ -11,8 +11,10 @@ echo "- DEBUG: $DEBUG"
 echo "- DATABASE_URL present: $([ -n "$DATABASE_URL" ] && echo 'Yes' || echo 'No')"
 echo "- REDIS_URL present: $([ -n "$REDIS_URL" ] && echo 'Yes' || echo 'No')"
 
-# We're already in the correct directory (/app)
-echo "Current directory: $(pwd)"
+# Navigate to the directory containing manage.py
+echo "Current directory before cd: $(pwd)"
+cd /app/ITIHub
+echo "Changed to directory: $(pwd)"
 echo "Listing directory contents:"
 ls -la
 
