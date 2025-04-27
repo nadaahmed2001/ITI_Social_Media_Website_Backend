@@ -10,10 +10,10 @@ echo "- DATABASE_URL: ${DATABASE_URL:0:15}..."
 echo "- REDIS_URL: ${REDIS_URL:0:15}..."
 
 # Apply database migrations
-python /ITIHub/manage.py migrate
+python /app/ITIHub/manage.py migrate
 
 # Collect static files
-python /ITIHub/manage.py collectstatic --noinput
+python /app/ITIHub/manage.py collectstatic --noinput
 
 # Create superuser if specified in environment variables
 if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] && [ -n "$DJANGO_SUPERUSER_EMAIL" ]; then
