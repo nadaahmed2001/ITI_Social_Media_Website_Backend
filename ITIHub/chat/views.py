@@ -268,12 +268,14 @@ def delete_group_message(request, group_id, message_id):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotView(APIView):
+    # Support multiple authentication methods
     authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request, *args, **kwargs):
         # Debug authentication info
         print(f"User authenticated: {request.user.is_authenticated}")
+        print(f"User: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
         print(f"Auth header: {request.META.get('HTTP_AUTHORIZATION', 'Not provided')}")
         
         try:
@@ -300,17 +302,40 @@ class ChatBotView(APIView):
                 masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
                 print(f"Using OpenAI API key: {masked_key}")
             
-            # Make API call to OpenAI
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant for ITI students."},
-                    {"role": "user", "content": message}
-                ]
-            )
+            # Make API call to OpenAI using the more modern Client approach
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=api_key)
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant for ITI students."},
+                        {"role": "user", "content": message}
+                    ]
+                )
+                ai_response = response.choices[0].message.content
+            except ImportError:
+                # Fall back to the older approach
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant for ITI students."},
+                        {"role": "user", "content": message}
+                    ]
+                )
+                ai_response = response.choices[0].message.content
             
-            # Extract and return the response
-            ai_response = response.choices[0].message.content
+            # Save the message and response to the database if the model exists
+            try:
+                ChatBotMessage.objects.create(
+                    user=request.user,
+                    message=message,
+                    response=ai_response
+                )
+            except Exception as e:
+                # If saving to database fails, just log the error but continue
+                print(f"Error saving ChatBotMessage: {e}")
+                
             return Response({"response": ai_response}, status=status.HTTP_200_OK)
             
         except Exception as e:
