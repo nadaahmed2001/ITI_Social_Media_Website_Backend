@@ -29,7 +29,10 @@
       "DJANGO_SUPERUSER_USERNAME": "admin",
       "DJANGO_SUPERUSER_PASSWORD": "${ADMIN_PASSWORD}",
       "DJANGO_SUPERUSER_EMAIL": "admin@example.com",
-      "WSGI_WORKERS": "4"
+      "WSGI_WORKERS": "4",
+      "JWT_SECRET_KEY": "${JWT_SECRET_KEY}",
+      "JWT_ACCESS_TOKEN_LIFETIME_MINUTES": "60",
+      "JWT_REFRESH_TOKEN_LIFETIME_DAYS": "7"
     }
   }
 }
