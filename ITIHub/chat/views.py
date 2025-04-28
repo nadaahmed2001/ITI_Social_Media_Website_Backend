@@ -3,21 +3,20 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from rest_framework import generics, permissions
-from rest_framework.response import Response
-from .models import GroupChat, GroupMessage, ChatMessage
-from .serializers import GroupChatSerializer, GroupMessageSerializer, ChatMessageSerializer
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-import openai  # Import OpenAI library
-from .models import ChatBotMessage
-from .serializers import ChatBotMessageSerializer
-from rest_framework.permissions import IsAuthenticated
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from .models import GroupChat, GroupMessage, ChatMessage, ChatBotMessage
+from .serializers import GroupChatSerializer, GroupMessageSerializer, ChatMessageSerializer, ChatBotMessageSerializer
+from rest_framework.views import APIView
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
 import openai
+import os
 from django.conf import settings
 
 
@@ -269,40 +268,50 @@ def delete_group_message(request, group_id, message_id):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotView(APIView):
+    # Add multiple authentication classes to support both token and JWT
+    authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
+    
     def post(self, request, *args, **kwargs):
-        user = request.user
-        user_message = request.data.get('message', '').strip()
-        if not user_message:
-            return Response({"error": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
-        openai.api_key = settings.OPENAI_API_KEY
         try:
-            completion = openai.ChatCompletion.create(
+            # Get message from request
+            message = request.data.get('message')
+            if not message:
+                return Response(
+                    {"error": "Please provide a message"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Configure OpenAI client
+            openai.api_key = settings.OPENAI_API_KEY
+            
+            # Print API key for debugging (first few chars)
+            api_key = settings.OPENAI_API_KEY
+            if api_key:
+                masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
+                print(f"Using OpenAI API key: {masked_key}")
+            else:
+                print("WARNING: OpenAI API key is not set!")
+            
+            # Make API call to OpenAI
+            response = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": (
-                        "You are an assistant for ITI Scholarships students. "
-                        "You give academic advice, share study resources, explain ITI rules, "
-                        "and support students in making the most of their scholarship."
-                    )},
-                    {"role": "user", "content": user_message},
-                ],
-                max_tokens=300,
-                temperature=0.7
+                    {"role": "system", "content": "You are a helpful assistant for ITI students."},
+                    {"role": "user", "content": message}
+                ]
             )
-            bot_response = completion.choices[0].message['content']
-            # Save the conversation in the database
-            chatbot_message = ChatBotMessage.objects.create(
-                user=user,
-                message=user_message,
-                response=bot_response
-            )
-            serializer = ChatBotMessageSerializer(chatbot_message)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
+            
+            # Extract and return the response
+            ai_response = response.choices[0].message.content
+            return Response({"response": ai_response}, status=status.HTTP_200_OK)
+            
         except Exception as e:
-            return Response({"error": f"Failed to get response: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+            print(f"ChatBot Error: {str(e)}")
+            return Response(
+                {"error": f"An error occurred: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotMessagesView(APIView):

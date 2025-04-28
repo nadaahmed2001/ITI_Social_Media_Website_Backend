@@ -1,37 +1,25 @@
-from django.contrib import admin  # This was missing
+from django.contrib import admin
 from django.urls import path, include
-from django.http import JsonResponse
+from django.conf import settings
+from django.conf.urls.static import static
+from django.http import HttpResponse
 
-# Add missing imports
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from users.views import ProfileSearchView
-
-# Health check endpoint for Railway
+# Define a simple health check endpoint
 def health_check(request):
-    """Health check endpoint for Railway"""
-    return JsonResponse({"status": "healthy"})
+    return HttpResponse("OK")
 
 urlpatterns = [
-    # Add the health check endpoint at the beginning
-    path('health/', health_check, name='health_check'),
-    
-    # Now the admin path will work properly
-    path("admin/", admin.site.urls),  # Admin panel
-    
-    # Authentication & Users
-    path("users/", include("users.urls")),  
-
-    # API Endpoints
-    path("api/", include([
-        path("supervisor/", include("batches.urls")),  
-        path("chat/", include("chat.urls")),  
-        path("notifications/", include("notifications.urls")),  
-        path("posts/", include("posts.urls")),
-        path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-        path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-        path('projects/', include('projects.urls')),
-        path('search/profiles/', ProfileSearchView.as_view(), name='profile-search'),
-
-        
-    ])),
+    path("admin/", admin.site.urls),
+    path("api/users/", include("users.urls")),
+    path("api/batches/", include("batches.urls")),
+    path("api/groups/", include("groups.urls")),
+    path("api/posts/", include("posts.urls")),
+    path("api/notifications/", include("notifications.urls")),
+    path("api/projects/", include("projects.urls")),
+    path("api/chat/", include("chat.urls")),  # Make sure this line exists
+    path("health/", health_check, name="health_check"),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
