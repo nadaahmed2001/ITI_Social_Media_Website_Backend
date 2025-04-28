@@ -6,7 +6,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get clean
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=8080
 ENV ENABLE_WEBSOCKET=true
 
 # Default DATABASE_URL - will be overridden by environment variables if provided

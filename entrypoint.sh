@@ -133,8 +133,8 @@ if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ] &&
     python manage.py createsuperuser --noinput || echo "Superuser may already exist."
 fi
 
-# Determine port for server
-PORT=${PORT:-8000}
+# Determine port for server - Default to 8080 for Railway
+PORT=${PORT:-8080}
 echo "Starting server on port $PORT..."
 
 # Add a health check endpoint for Railway
@@ -149,9 +149,9 @@ EOF
 
 # Check if we should run with WebSocket support
 if [ "${ENABLE_WEBSOCKET:-true}" = "true" ]; then
-    echo "Starting Daphne server with WebSocket support..."
+    echo "Starting Daphne server with WebSocket support on port $PORT..."
     exec daphne -b 0.0.0.0 -p $PORT ITIHub.asgi:application
 else
-    echo "Starting Gunicorn server (WebSockets disabled)..."
+    echo "Starting Gunicorn server (WebSockets disabled) on port $PORT..."
     exec gunicorn ITIHub.wsgi:application --bind 0.0.0.0:$PORT --workers 4
 fi
