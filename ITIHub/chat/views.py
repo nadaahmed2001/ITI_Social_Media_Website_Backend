@@ -268,11 +268,14 @@ def delete_group_message(request, group_id, message_id):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotView(APIView):
-    # Add multiple authentication classes to support both token and JWT
     authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     
     def post(self, request, *args, **kwargs):
+        # Debug authentication info
+        print(f"User authenticated: {request.user.is_authenticated}")
+        print(f"Auth header: {request.META.get('HTTP_AUTHORIZATION', 'Not provided')}")
+        
         try:
             # Get message from request
             message = request.data.get('message')
@@ -283,15 +286,19 @@ class ChatBotView(APIView):
                 )
             
             # Configure OpenAI client
-            openai.api_key = settings.OPENAI_API_KEY
+            api_key = settings.OPENAI_API_KEY
+            if not api_key:
+                return Response(
+                    {"error": "OpenAI API key is not configured"}, 
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+                
+            openai.api_key = api_key
             
             # Print API key for debugging (first few chars)
-            api_key = settings.OPENAI_API_KEY
             if api_key:
                 masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
                 print(f"Using OpenAI API key: {masked_key}")
-            else:
-                print("WARNING: OpenAI API key is not set!")
             
             # Make API call to OpenAI
             response = openai.ChatCompletion.create(

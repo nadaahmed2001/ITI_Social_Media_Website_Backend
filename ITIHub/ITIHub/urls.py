@@ -4,9 +4,28 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse
 
-# Define a simple health check endpoint
+# Define a more robust health check endpoint
 def health_check(request):
-    return HttpResponse("OK")
+    """
+    Health check endpoint that returns OK to indicate the service is running
+    """
+    from django.http import JsonResponse
+    from django.db import connection
+    
+    # Test database connection
+    db_ok = True
+    try:
+        connection.ensure_connection()
+    except Exception as e:
+        db_ok = False
+    
+    status = {
+        "status": "healthy" if db_ok else "unhealthy",
+        "db_connection": "ok" if db_ok else "failed"
+    }
+    
+    status_code = 200 if db_ok else 500
+    return JsonResponse(status, status=status_code)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -23,3 +42,10 @@ urlpatterns = [
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Add a debug URL to check auth
+urlpatterns += [
+    path("api/debug/auth/", 
+         lambda request: HttpResponse(f"Authenticated: {request.user.is_authenticated}, User: {request.user.username if request.user.is_authenticated else 'Anonymous'}"), 
+         name="debug_auth"),
+]
