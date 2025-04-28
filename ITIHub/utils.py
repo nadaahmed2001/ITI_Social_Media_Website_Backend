@@ -52,4 +52,8 @@ def custom_exception_handler(exc, context):
             if token:
                 logger.debug(f"Token starts with: {token[:10]}...")
 
+    # WebSocket connection errors (added for better debugging)
+    elif "websocket" in str(exc).lower() or "channel" in str(exc).lower():
+        logger.error(f"WebSocket error: {str(exc)}")
+        
     return response

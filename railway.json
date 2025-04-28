@@ -17,6 +17,7 @@
       "PORT": "8080",
       "RAILWAY_DOCKERFILE_PORT": "8080",
       "DATABASE_URL": "${DATABASE_URL}",
+      "REDIS_URL": "${REDIS_URL}",
       "DEBUG": "False",
       "ALLOWED_HOSTS": "*.up.railway.app,*.neon.tech,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech,*",
       "CORS_ALLOW_ALL_ORIGINS": "True",
@@ -30,9 +31,7 @@
       "DJANGO_SUPERUSER_PASSWORD": "${ADMIN_PASSWORD}",
       "DJANGO_SUPERUSER_EMAIL": "admin@example.com",
       "WSGI_WORKERS": "4",
-      "JWT_SECRET_KEY": "${JWT_SECRET_KEY}",
-      "JWT_ACCESS_TOKEN_LIFETIME_MINUTES": "60",
-      "JWT_REFRESH_TOKEN_LIFETIME_DAYS": "7"
+      "JWT_SECRET_KEY": "${JWT_SECRET_KEY}"
     }
   }
 }

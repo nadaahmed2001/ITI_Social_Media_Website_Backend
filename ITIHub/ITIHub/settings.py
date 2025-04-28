@@ -227,8 +227,8 @@ REST_FRAMEWORK = {
 
 # JWT settings - ensure these are properly configured
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=int(os.environ.get('JWT_ACCESS_TOKEN_LIFETIME_MINUTES', 60))),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=int(os.environ.get('JWT_REFRESH_TOKEN_LIFETIME_DAYS', 7))),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # Set to 24 hours for better debugging
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Set to 30 days for better debugging
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': False,
     'AUTH_HEADER_TYPES': ('Bearer',),  # Add this to ensure Bearer prefix is accepted
