@@ -28,6 +28,10 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway
 if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('healthcheck.railway.app')
 
+# Proxy configuration for Railway and other deployment platforms
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # User model configuration
 AUTH_USER_MODEL = "users.User"
 LOGIN_URL = '/users/student/login/'
