@@ -25,7 +25,7 @@
       "CORS_ALLOW_HEADERS": "*",
       "CORS_ALLOW_CREDENTIALS": "True",
       "ENABLE_WEBSOCKET": "true",
-      "WS_HOST": "${RAILWAY_PUBLIC_DOMAIN}",
+      "WS_HOST": "itisocialmediawebsitebackend-production.up.railway.app",
       "PYTHONUNBUFFERED": "1",
       "SECRET_KEY": "${SECRET_KEY}",
       "DJANGO_SUPERUSER_USERNAME": "admin",
