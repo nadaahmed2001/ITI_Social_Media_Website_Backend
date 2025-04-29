@@ -62,7 +62,6 @@ INSTALLED_APPS = [
     "posts",
     "notifications",
     "projects",
-    "core",  # Add core app to installed apps
     'django_extensions',
     "rest_framework", 
     "chat",
@@ -140,42 +139,14 @@ except Exception as e:
 # Redis configuration for channels
 redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
 print(f"Using REDIS_URL: {redis_url[:10]}...")  # Debug info
-try:
-    # Parse the URL to ensure it's valid and log more details
-    import urllib.parse
-    parsed_redis = urllib.parse.urlparse(redis_url)
-    redis_host = parsed_redis.hostname or "localhost"
-    redis_port = parsed_redis.port or 6379
-    redis_password = parsed_redis.password or None
-    print(f"Redis connection details: {redis_host}:{redis_port}")
-    
-    # Configure channel layers with the parsed URL and improved reliability settings
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [redis_url],
-                # Connection pool settings for better reliability
-                "capacity": 1500,
-                "expiry": 60,  # Message expiry in seconds
-                # Symmetric encryption keys for session security
-                "symmetric_encryption_keys": [SECRET_KEY],
-                # Retry settings for Redis connections
-                "connect_timeout": 20,
-                "ping_interval": 60,
-                "ping_timeout": 30,
-                "reconnect_scheme": [1, 2, 5, 10, 30, 60],  # Backoff scheme in seconds
-            },
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [redis_url],
         },
-    }
-except Exception as e:
-    print(f"Error configuring Redis: {e}")
-    # Fallback to in-memory channel layer for development/testing
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
-    }
+    },
+}
 
 # Static files configuration
 STATIC_URL = "static/"
@@ -218,7 +189,7 @@ DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'testiticommunity@gmai
 SITE_NAME = os.environ.get('SITE_NAME', 'ITIHub')
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', 'testiticommunity@gmail.com')
 FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')
-BACKEND_BASE_URL = os.environ.get('BACKEND_BASE_URL', 'http://localhost:8000')
+BACKEND_BASE_URL = os.environ.get('BACKEND_BASE_URL', 'https://itihub-production.up.railway.app/')
 LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png")
 
 # OpenAI API configuration
@@ -277,10 +248,3 @@ default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 # Add this at the end of the file or with other Django settings
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# WebSocket configuration
-WS_PROTOCOL = "wss://" if not DEBUG else "ws://"
-WS_HOST = os.environ.get('WS_HOST', ALLOWED_HOSTS[0] if ALLOWED_HOSTS else 'localhost:8000')
-
-# Make these available to templates
-WEBSOCKET_URL = f"{WS_PROTOCOL}{WS_HOST}"

@@ -47,7 +47,6 @@ urlpatterns = [
     path("api/notifications/", include("notifications.urls")),
     path("api/projects/", include("projects.urls")),
     path("api/chat/", include("chat.urls")),
-    path("", include("core.urls")),  # Include core URLs
     path("health/", health_check, name="health_check"),
 ]
 

@@ -50,18 +50,6 @@ class PostListCreateView(generics.ListCreateAPIView):
         return queryset
 
     def perform_create(self, serializer):
-        # attachment_urls = self.request.data.getlist('attachment_urls', [])  # Changed to getlist
-        # post = serializer.save(author=self.request.user)
-        
-        # for url in attachment_urls:
-        #     is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif'])
-        #     is_video = any(ext in url.lower() for ext in ['.mp4', '.mov'])
-            
-        #     attachment = Attachment.objects.create(
-        #         image=url if is_image else None,
-        #         video=url if is_video else None
-        #     )
-        #     post.attachments.add(attachment)
         serializer.save(author=self.request.user)
 
 @method_decorator(csrf_exempt, name="dispatch")
