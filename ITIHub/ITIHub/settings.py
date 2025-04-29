@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "posts",
     "notifications",
     "projects",
+    "core",  # Add core app to installed apps
     'django_extensions',
     "rest_framework", 
     "chat",
