@@ -179,3 +179,15 @@ def health_check(request):
     response = JsonResponse(status, status=status_code)
     response['Access-Control-Allow-Origin'] = '*'
     return response
+
+def index(request):
+    """Root path handler - provides basic API information or redirects"""
+    from django.http import JsonResponse
+    return JsonResponse({
+        "status": "online",
+        "message": "ITI Social Media Website API is running",
+        "endpoints": {
+            "health_check": "/health-check/",
+            "websocket_config": "/websocket-config/"
+        }
+    })

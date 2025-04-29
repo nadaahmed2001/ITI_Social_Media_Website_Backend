@@ -6,6 +6,8 @@ from . import websocket_connection_test
 from . import websocket_token_test
 
 urlpatterns = [
+    # Add root path handler
+    path('', views.index, name='index'),
     path('websocket-config/', views.websocket_config, name='websocket_config'),
     path('websocket-diagnostics/', websocket_debug.websocket_diagnostics, name='websocket_diagnostics'),
     path('websocket-health/', websocket_health.websocket_health, name='websocket_health'),
