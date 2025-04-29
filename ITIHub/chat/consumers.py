@@ -324,7 +324,12 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
     @sync_to_async
     def clear_private_messages(self):
         # Delete all messages in the private chat from the database
-        ChatMessage.objects.filter(
-            Q(sender=self.user, receiver_id=self.other_user_id) |
-            Q(sender_id=self.other_user_id, receiver=self.user)
-        ).delete()
+        try:
+            ChatMessage.objects.filter(
+                Q(sender=self.user, receiver_id=self.other_user_id) |
+                Q(sender_id=self.other_user_id, receiver=self.user)
+            ).delete()
+            logger.info(f"Cleared private chat messages between users {self.user.id} and {self.other_user_id}")
+        except Exception as e:
+            logger.error(f"Error clearing private messages: {str(e)}")
+            # Continue even if there's an error - don't raise it up to the caller

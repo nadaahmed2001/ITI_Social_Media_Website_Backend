@@ -1,5 +1,7 @@
 import os
 import django
+import logging
+import json
 from urllib.parse import parse_qs
 from channels.auth import AuthMiddlewareStack
 from channels.db import database_sync_to_async
@@ -7,6 +9,8 @@ from channels.db import database_sync_to_async
 # Ensure Django settings are configured
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ITIHub.settings')
 django.setup()
+
+logger = logging.getLogger(__name__)
 
 class TokenAuthMiddleware:
     """
@@ -16,18 +20,48 @@ class TokenAuthMiddleware:
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        # Parse the query string to extract the token
-        query_string = scope['query_string'].decode()
-        query_params = parse_qs(query_string)
-        token = query_params.get('token', [None])[0]
+        try:
+            # Parse the query string to extract the token
+            query_string = scope.get('query_string', b'').decode()
+            query_params = parse_qs(query_string)
+            token = query_params.get('token', [None])[0]
 
-        if not token:
-            print("No token provided in the query string.")
-            scope['user'] = await self.get_anonymous_user()
-        else:
+            if not token:
+                logger.warning("No token provided in WebSocket connection")
+                # Send a proper close code for authentication failure
+                await send({
+                    'type': 'websocket.close',
+                    'code': 4003,  # Custom close code for no token
+                })
+                return
+            
+            # Try to authenticate with the token
             scope['user'] = await self.get_user_from_token(token)
-
-        return await self.inner(scope, receive, send)
+            
+            # If authentication failed, close the connection
+            if scope['user'].is_anonymous:
+                logger.warning(f"WebSocket authentication failed with token starting with: {token[:10] if token else 'None'}...")
+                await send({
+                    'type': 'websocket.close',
+                    'code': 4001,  # Custom close code for auth failure
+                })
+                return
+            
+            # Authentication successful, continue
+            logger.debug(f"WebSocket authenticated as: {scope['user'].username}")
+            return await self.inner(scope, receive, send)
+        
+        except Exception as e:
+            logger.error(f"WebSocket middleware error: {str(e)}")
+            # Close connection with error message
+            try:
+                await send({
+                    'type': 'websocket.close',
+                    'code': 4500,  # Custom close code for server error
+                })
+            except:
+                pass  # If even the error handler fails, just let it go
+            return
 
     @database_sync_to_async
     def get_user_from_token(self, token):
@@ -41,10 +75,16 @@ class TokenAuthMiddleware:
             access_token = AccessToken(token)
             User = get_user_model()
             user = User.objects.get(id=access_token['user_id'])
-            print(f"Authenticated user: {user}")
+            logger.debug(f"Authenticated user: {user.username} (ID: {user.id})")
             return user
-        except (InvalidToken, TokenError, User.DoesNotExist) as e:
-            print(f"Authentication error: {e}")
+        except (InvalidToken, TokenError) as e:
+            logger.warning(f"Token validation error: {str(e)}")
+            return AnonymousUser()
+        except User.DoesNotExist as e:
+            logger.warning(f"User not found for token: {str(e)}")
+            return AnonymousUser()
+        except Exception as e:
+            logger.error(f"Unexpected error in token authentication: {str(e)}")
             return AnonymousUser()
 
     @database_sync_to_async

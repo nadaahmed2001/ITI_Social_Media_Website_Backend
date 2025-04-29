@@ -1,6 +1,8 @@
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 import logging
+import traceback
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,7 @@ def custom_exception_handler(exc, context):
     # If response is None, it means the exception was not handled
     if response is None:
         logger.error(f"Unhandled exception: {str(exc)}")
+        logger.debug(f"Exception traceback: {traceback.format_exc()}")
         return None
 
     # Add detailed logging for permission and authentication errors
@@ -52,8 +55,17 @@ def custom_exception_handler(exc, context):
             if token:
                 logger.debug(f"Token starts with: {token[:10]}...")
 
-    # WebSocket connection errors (added for better debugging)
+    # WebSocket connection errors (enhanced for better debugging)
     elif "websocket" in str(exc).lower() or "channel" in str(exc).lower():
         logger.error(f"WebSocket error: {str(exc)}")
+        logger.debug(f"WebSocket error traceback: {traceback.format_exc()}")
+        
+        # Return JSON response for WebSocket errors instead of HTML
+        if context.get('request') and ('ws' in context.get('request').path or 'websocket' in context.get('request').path):
+            return Response(
+                {"error": "WebSocket configuration error", "detail": str(exc)},
+                status=500,
+                content_type='application/json'
+            )
         
     return response
