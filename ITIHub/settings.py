@@ -260,11 +260,36 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Set to 30 days for better debugging
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': False,
+    'UPDATE_LAST_LOGIN': False,
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', SECRET_KEY),
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+
     'AUTH_HEADER_TYPES': ('Bearer',),  # Add this to ensure Bearer prefix is accepted
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Standardize the header name
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+
+    'JTI_CLAIM': 'jti',
 }
+
+# Make JWT_SECRET_KEY available separately for middleware to use
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
+
+# WebSocket specific settings
+WS_PROTOCOL = os.environ.get('WS_PROTOCOL', 'wss' if not DEBUG else 'ws')
+WS_HOST = os.environ.get('WS_HOST', 'itisocialmediawebsitebackend-production.up.railway.app')
+WS_PING_INTERVAL = int(os.environ.get('WS_PING_INTERVAL', 30))
+WS_PING_TIMEOUT = int(os.environ.get('WS_PING_TIMEOUT', 10))
+
+# Ensure WebSocket settings are available 
+ENABLE_WEBSOCKET = os.environ.get('ENABLE_WEBSOCKET', 'true').lower() == 'true'
 
 # Site ID
 SITE_ID = 1

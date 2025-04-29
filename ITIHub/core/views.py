@@ -151,3 +151,31 @@ def websocket_config(request):
     response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
     response['Access-Control-Allow-Headers'] = 'Content-Type'
     return response
+
+def health_check(request):
+    """
+    Simple health check endpoint that returns OK to indicate the service is running.
+    Matches the path expected by the frontend.
+    """
+    from django.db import connection
+    
+    # Test database connection
+    db_ok = True
+    try:
+        connection.ensure_connection()
+    except Exception as e:
+        db_ok = False
+    
+    status = {
+        "status": "healthy" if db_ok else "unhealthy",
+        "db_connection": "ok" if db_ok else "failed",
+        # Add WebSocket status
+        "websocket_enabled": os.environ.get('ENABLE_WEBSOCKET', 'true').lower() == 'true',
+        "using_daphne": True,
+        "redis_url_set": bool(os.environ.get('REDIS_URL')),
+    }
+    
+    status_code = 200 if db_ok else 500
+    response = JsonResponse(status, status=status_code)
+    response['Access-Control-Allow-Origin'] = '*'
+    return response
