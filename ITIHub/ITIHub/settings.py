@@ -248,3 +248,10 @@ default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 # Add this at the end of the file or with other Django settings
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# WebSocket configuration
+WS_PROTOCOL = "wss://" if not DEBUG else "ws://"
+WS_HOST = os.environ.get('WS_HOST', ALLOWED_HOSTS[0] if ALLOWED_HOSTS else 'localhost:8000')
+
+# Make these available to templates
+WEBSOCKET_URL = f"{WS_PROTOCOL}{WS_HOST}"

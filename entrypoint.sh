@@ -148,10 +148,10 @@ def health_check(request):
 EOF
 
 # Check if we should run with WebSocket support
-if [ "${ENABLE_WEBSOCKET:-true}" = "true" ]; then
-    echo "Starting Daphne server with WebSocket support on port $PORT..."
+if [[ "$ENABLE_WEBSOCKET" == "true" ]]; then
+    echo "Starting Daphne ASGI server for WebSocket support..."
     exec daphne -b 0.0.0.0 -p $PORT ITIHub.asgi:application
 else
-    echo "Starting Gunicorn server (WebSockets disabled) on port $PORT..."
-    exec gunicorn ITIHub.wsgi:application --bind 0.0.0.0:$PORT --workers 4
+    echo "Starting Gunicorn WSGI server..."
+    exec gunicorn ITIHub.wsgi:application --bind 0.0.0.0:$PORT --workers ${WSGI_WORKERS:-4}
 fi
