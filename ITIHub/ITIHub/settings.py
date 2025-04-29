@@ -140,14 +140,42 @@ except Exception as e:
 # Redis configuration for channels
 redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
 print(f"Using REDIS_URL: {redis_url[:10]}...")  # Debug info
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [redis_url],
+try:
+    # Parse the URL to ensure it's valid and log more details
+    import urllib.parse
+    parsed_redis = urllib.parse.urlparse(redis_url)
+    redis_host = parsed_redis.hostname or "localhost"
+    redis_port = parsed_redis.port or 6379
+    redis_password = parsed_redis.password or None
+    print(f"Redis connection details: {redis_host}:{redis_port}")
+    
+    # Configure channel layers with the parsed URL and improved reliability settings
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [redis_url],
+                # Connection pool settings for better reliability
+                "capacity": 1500,
+                "expiry": 60,  # Message expiry in seconds
+                # Symmetric encryption keys for session security
+                "symmetric_encryption_keys": [SECRET_KEY],
+                # Retry settings for Redis connections
+                "connect_timeout": 20,
+                "ping_interval": 60,
+                "ping_timeout": 30,
+                "reconnect_scheme": [1, 2, 5, 10, 30, 60],  # Backoff scheme in seconds
+            },
         },
-    },
-}
+    }
+except Exception as e:
+    print(f"Error configuring Redis: {e}")
+    # Fallback to in-memory channel layer for development/testing
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # Static files configuration
 STATIC_URL = "static/"
