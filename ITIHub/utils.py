@@ -54,6 +54,16 @@ def custom_exception_handler(exc, context):
             token = token_parts[1]
             if token:
                 logger.debug(f"Token starts with: {token[:10]}...")
+                # Additional check to help diagnose WebSocket auth issues
+                try:
+                    import jwt
+                    from django.conf import settings
+                    secret_key = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
+                    # Log token details without verification for debugging
+                    decoded = jwt.decode(token, options={"verify_signature": False}, algorithms=['HS256'])
+                    logger.debug(f"Token payload inspection: user_id={decoded.get('user_id', 'missing')}, exp={decoded.get('exp', 'missing')}")
+                except Exception as token_err:
+                    logger.debug(f"Could not decode token for inspection: {token_err}")
 
     # WebSocket connection errors (enhanced for better debugging)
     elif "websocket" in str(exc).lower() or "channel" in str(exc).lower():
