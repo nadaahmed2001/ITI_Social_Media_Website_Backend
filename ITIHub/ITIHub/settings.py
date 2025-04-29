@@ -225,17 +225,36 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
 }
 
-# JWT settings - ensure these are properly configured
+# JWT Settings
+from datetime import timedelta
+import os
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # Set to 24 hours for better debugging
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Set to 30 days for better debugging
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False,
-    'AUTH_HEADER_TYPES': ('Bearer',),  # Add this to ensure Bearer prefix is accepted
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Standardize the header name
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Increase from default 5 mins
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', SECRET_KEY),
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+
+    'JTI_CLAIM': 'jti',
 }
+
+# Make JWT_SECRET_KEY available as a separate setting for middleware to use
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
 
 # Site ID
 SITE_ID = 1

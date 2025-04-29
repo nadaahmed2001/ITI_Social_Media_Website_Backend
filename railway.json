@@ -35,7 +35,10 @@
       "WSGI_WORKERS": "4",
       "JWT_SECRET_KEY": "${JWT_SECRET_KEY}",
       "FRONTEND_BASE_URL": "https://itisocialmediawebsitefrontend-production.up.railway.app",
-      "WEBSOCKET_MAX_RETRY": "5"
+      "WEBSOCKET_MAX_RETRY": "5",
+      "WS_PING_INTERVAL": "30",
+      "WS_PING_TIMEOUT": "10",
+      "WS_HEARTBEAT_ENABLED": "true"
     },
     "healthcheckTimeout": 300,
     "restartPolicyMaxRetries": 10
