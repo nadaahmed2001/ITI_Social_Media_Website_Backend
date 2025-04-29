@@ -49,6 +49,7 @@ urlpatterns = [
     path("api/chat/", include("chat.urls")),
     path("api/", include("core.urls")),  # Add core URLs here
     path("health/", health_check, name="health_check"),
+    path("api/health-check/", health_check, name="api_health_check"),
 ]
 
 # Serve media files in development
