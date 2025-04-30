@@ -1041,3 +1041,13 @@ class FollowingListView(generics.ListAPIView):
         target_user = target_profile.user
         following_ids = Follow.objects.filter(follower=target_user).values_list('following_id', flat=True)
         return User.objects.filter(id__in=following_ids).select_related('profile')
+
+# for mentionable users
+class MentionableUsersView(generics.ListAPIView):
+    serializer_class = MinimalUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        following_ids = Follow.objects.filter(follower=self.request.user).values_list('following_id', flat=True)
+        return User.objects.filter(id__in=following_ids).select_related('profile')
+

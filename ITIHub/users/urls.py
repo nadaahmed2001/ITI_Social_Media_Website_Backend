@@ -21,7 +21,8 @@ from .views import (
                     ProfileSearchView,
                     FollowToggleView, 
                     FollowerListView, 
-                    FollowingListView
+                    FollowingListView,
+                    MentionableUsersView
                     )
 
 
@@ -47,6 +48,8 @@ urlpatterns = [
     path('profiles/<uuid:profile_id>/follow/', FollowToggleView.as_view(), name='follow-toggle'),
     path('profiles/<uuid:profile_id>/followers/', FollowerListView.as_view(), name='follower-list'),
     path('profiles/<uuid:profile_id>/following/', FollowingListView.as_view(), name='following-list'),
+    # for mentionable users
+    path('mentions/following/', MentionableUsersView.as_view(), name='mentionable-following-users'),
 
     
     # User Account

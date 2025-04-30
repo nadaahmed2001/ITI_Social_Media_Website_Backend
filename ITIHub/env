@@ -1,0 +1,39 @@
+# Core Django Settings
+SECRET_KEY=django-insecure-erj+_g2fu16q8xfak*u1@+%$0^g(@r_u&s64qj*spv&+b3xi-4
+DEBUG=False
+ALLOWED_HOSTS=localhost,127.0.0.1,.up.railway.app,.neon.tech,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech
+
+# Neon PostgreSQL Database URL
+DATABASE_URL=postgresql://neondb_owner:npg_Imx5LjVO2evH@ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+# OpenAI Configuration
+OPENAI_API_KEY=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
+
+# Frontend & Backend URLs
+FRONTEND_BASE_URL=http://localhost:5173
+BACKEND_BASE_URL=https://itihub-production.up.railway.app
+
+# CORS settings
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+CORS_ALLOW_ALL_ORIGINS=True
+
+# Cloudinary settings
+CLOUDINARY_CLOUD_NAME=dsaznefnt
+CLOUDINARY_API_KEY=974213622245136
+CLOUDINARY_API_SECRET=Q1bg9XZJVRD6gTVad7lfPouOow0
+
+# Email settings
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=testiticommunity@gmail.com
+EMAIL_HOST_PASSWORD=pzsquwhzxdpxjjzd
+DEFAULT_FROM_EMAIL=testiticommunity@gmail.com
+SUPPORT_EMAIL=testiticommunity@gmail.com
+
+# Site settings
+SITE_NAME=ITIHub
+LOGO_URL=https://eib.eg/wp-content/uploads/2018/09/iti_logo.5b9a0fd125be-300x133.png
+
+# WebSocket support
+ENABLE_WEBSOCKET=true
