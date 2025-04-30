@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save, post_delete, pre_delete
+from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import Notification
 from users.models import Follow
@@ -7,6 +7,7 @@ from posts.models import Post, Comment, Reaction
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 import re
+import traceback
 
 User = get_user_model()
 
@@ -111,6 +112,7 @@ def extract_mentions(text):
 #         ]
 #         Notification.objects.bulk_create(notifications)
 
+
 @receiver(post_save, sender=Follow)
 def notify_follow(sender, instance, created, **kwargs):
     # If the Follow instance is newly created
@@ -124,23 +126,16 @@ def notify_follow(sender, instance, created, **kwargs):
             related_object_id=instance.id
         )
 
-@receiver(pre_delete, sender=Follow)
+@receiver(post_delete, sender=Follow)
 def notify_unfollow(sender, instance, **kwargs):
-    from users.models import User
-    try:
-        follower = User.objects.get(id=instance.follower_id)
-        following = User.objects.get(id=instance.following_id)
-    except User.DoesNotExist:
-        return
-
+    # Send an 'unfollow' notification when the follow relationship is deleted
     Notification.objects.create(
-        recipient=following,
-        sender=follower,
+        recipient=instance.following,
+        sender=instance.follower,
         notification_type="unfollow",
         related_content_type=ContentType.objects.get_for_model(instance),
         related_object_id=instance.id
     )
-
 @receiver(post_save, sender=Reaction)
 def notify_reaction(sender, instance, created, **kwargs):
     if created:
@@ -170,3 +165,16 @@ def remove_reaction_notification(sender, instance, **kwargs):
     related_object_id=instance.id,
     related_content_type=ContentType.objects.get_for_model(instance)
     ).delete()
+
+
+
+@receiver(post_save, sender=Notification)
+def debug_notification_creation(sender, instance, created, **kwargs):
+    print("🚨 Notification signal triggered")
+    try:
+        if created:
+            print(f"New Notification created: Recipient = {instance.recipient}, Sender = {instance.sender}")
+    except Exception as e:
+        print("Error in Notification signal:")
+        print(str(e))
+        traceback.print_exc()

@@ -43,4 +43,6 @@ class Notification(models.Model):
     related_object = GenericForeignKey('related_content_type', 'related_object_id')
 
     def __str__(self):
-        return f"{self.recipient.username} - {self.get_notification_type_display()}"
+        recipient = self.recipient.username if self.recipient else "Unknown"
+        notif_type = self.get_notification_type_display() if self.notification_type else "Unknown"
+        return f"{recipient} - {notif_type}"
