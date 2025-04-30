@@ -64,6 +64,8 @@ urlpatterns = [
 
     path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    
+    path('search/profiles/', ProfileSearchView.as_view(), name='profile_search'),  # For searching profiles by username
 
 ]
 

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile",
+    "buildArgs": {
+      "DATABASE_URL": "${DATABASE_URL}"
+    }
+  },
+  "deploy": {
+    "startCommand": "/app/entrypoint.sh",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "healthcheckPath": "/health/",
+    "healthcheckTimeout": 300,
+    "env": {
+      "PORT": "8080",
+      "RAILWAY_DOCKERFILE_PORT": "8080",
+      "DATABASE_URL": "${DATABASE_URL}",
+      "REDIS_URL": "${REDIS_URL}",
+      "DEBUG": "False",
+      "ALLOWED_HOSTS": "*.up.railway.app,*.neon.tech,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech,*",
+      "CORS_ALLOW_ALL_ORIGINS": "False",
+      "CORS_ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://iti-social-media-website-frontend.vercel.app",
+      "CORS_ALLOW_METHODS": "DELETE,GET,OPTIONS,PATCH,POST,PUT",
+      "CORS_ALLOW_HEADERS": "*",
+      "CORS_ALLOW_CREDENTIALS": "True",
+      "ENABLE_WEBSOCKET": "true",
+      "WS_PROTOCOL": "wss",
+      "WS_HOST": "itisocialmediawebsitebackend-production.up.railway.app",
+      "PYTHONUNBUFFERED": "1",
+      "SECRET_KEY": "${SECRET_KEY}",
+      "DJANGO_SUPERUSER_USERNAME": "admin",
+      "DJANGO_SUPERUSER_PASSWORD": "${ADMIN_PASSWORD}",
+      "DJANGO_SUPERUSER_EMAIL": "admin@example.com",
+      "WSGI_WORKERS": "4",
+      "JWT_SECRET_KEY": "${JWT_SECRET_KEY}",
+      "FRONTEND_BASE_URL": "https://itisocialmediawebsitefrontend-production.up.railway.app",
+      "WEBSOCKET_MAX_RETRY": "5",
+      "WS_PING_INTERVAL": "30",
+      "WS_PING_TIMEOUT": "10",
+      "WS_HEARTBEAT_ENABLED": "true"
+    },
+    "healthcheckTimeout": 300,
+    "restartPolicyMaxRetries": 10
+  }
+}

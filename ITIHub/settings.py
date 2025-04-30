@@ -62,7 +62,8 @@ INSTALLED_APPS = [
     "posts",
     "notifications",
     "projects",
-    'django_extensions',
+    "core",  # Ensure core app is included here
+    "django_extensions",
     "rest_framework", 
     "chat",
     "rest_framework.authtoken",
@@ -139,14 +140,42 @@ except Exception as e:
 # Redis configuration for channels
 redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
 print(f"Using REDIS_URL: {redis_url[:10]}...")  # Debug info
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [redis_url],
+try:
+    # Parse the URL to ensure it's valid and log more details
+    import urllib.parse
+    parsed_redis = urllib.parse.urlparse(redis_url)
+    redis_host = parsed_redis.hostname or "localhost"
+    redis_port = parsed_redis.port or 6379
+    redis_password = parsed_redis.password or None
+    print(f"Redis connection details: {redis_host}:{redis_port}")
+    
+    # Configure channel layers with the parsed URL and improved reliability settings
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [redis_url],
+                # Connection pool settings for better reliability
+                "capacity": 1500,
+                "expiry": 10,  # Reduce message expiry for faster error detection
+                # Don't use symmetric encryption in production as it adds overhead
+                # "symmetric_encryption_keys": [SECRET_KEY],
+                # Retry settings for Redis connections
+                "connect_timeout": 10,
+                "ping_interval": 30,
+                "ping_timeout": 10,
+                "reconnect_scheme": [1, 2, 5, 10],  # Reduced reconnect backoff
+            },
         },
-    },
-}
+    }
+except Exception as e:
+    print(f"Error configuring Redis: {e}")
+    # Fallback to in-memory channel layer for development/testing
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # Static files configuration
 STATIC_URL = "static/"
@@ -196,7 +225,12 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
 
 # Ensure CORS settings allow frontend to communicate with backend
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+CORS_ALLOWED_ORIGINS = cors_origins.split(",") if cors_origins else [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://iti-social-media-website-frontend.vercel.app",
+]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',
@@ -209,7 +243,7 @@ CORS_ALLOW_HEADERS = [
     'access-control-allow-origin'  # Allow this header to be processed
 ]
 # In production, this should be False and specific origins should be set
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Add to ensure JWT works properly in production
 REST_FRAMEWORK = {
@@ -225,15 +259,12 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
 }
 
-# JWT Settings
-from datetime import timedelta
-import os
-
+# JWT settings - ensure these are properly configured
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Increase from default 5 mins
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'ROTATE_REFRESH_TOKENS': False,
-    'BLACKLIST_AFTER_ROTATION': True,
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # Set to 24 hours for better debugging
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Set to 30 days for better debugging
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': False,
 
     'ALGORITHM': 'HS256',
@@ -242,8 +273,8 @@ SIMPLE_JWT = {
     'AUDIENCE': None,
     'ISSUER': None,
 
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'AUTH_HEADER_TYPES': ('Bearer',),  # Add this to ensure Bearer prefix is accepted
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Standardize the header name
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
 
@@ -253,8 +284,17 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
-# Make JWT_SECRET_KEY available as a separate setting for middleware to use
+# Make JWT_SECRET_KEY available separately for middleware to use
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
+
+# WebSocket specific settings
+WS_PROTOCOL = os.environ.get('WS_PROTOCOL', 'wss' if not DEBUG else 'ws')
+WS_HOST = os.environ.get('WS_HOST', 'itisocialmediawebsitebackend-production.up.railway.app')
+WS_PING_INTERVAL = int(os.environ.get('WS_PING_INTERVAL', 30))
+WS_PING_TIMEOUT = int(os.environ.get('WS_PING_TIMEOUT', 10))
+
+# Ensure WebSocket settings are available 
+ENABLE_WEBSOCKET = os.environ.get('ENABLE_WEBSOCKET', 'true').lower() == 'true'
 
 # Site ID
 SITE_ID = 1
@@ -267,3 +307,35 @@ default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 # Add this at the end of the file or with other Django settings
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',  # This will show more details in the logs
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+DEBUG = True

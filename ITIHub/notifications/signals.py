@@ -7,6 +7,7 @@ from posts.models import Post, Comment, Reaction
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 import re
+import traceback
 
 User = get_user_model()
 
@@ -111,6 +112,7 @@ def extract_mentions(text):
 #         ]
 #         Notification.objects.bulk_create(notifications)
 
+
 @receiver(post_save, sender=Follow)
 def notify_follow(sender, instance, created, **kwargs):
     # If the Follow instance is newly created
@@ -134,7 +136,6 @@ def notify_unfollow(sender, instance, **kwargs):
         related_content_type=ContentType.objects.get_for_model(instance),
         related_object_id=instance.id
     )
-
 @receiver(post_save, sender=Reaction)
 def notify_reaction(sender, instance, created, **kwargs):
     if created:
@@ -164,3 +165,16 @@ def remove_reaction_notification(sender, instance, **kwargs):
     related_object_id=instance.id,
     related_content_type=ContentType.objects.get_for_model(instance)
     ).delete()
+
+
+
+@receiver(post_save, sender=Notification)
+def debug_notification_creation(sender, instance, created, **kwargs):
+    print("🚨 Notification signal triggered")
+    try:
+        if created:
+            print(f"New Notification created: Recipient = {instance.recipient}, Sender = {instance.sender}")
+    except Exception as e:
+        print("Error in Notification signal:")
+        print(str(e))
+        traceback.print_exc()

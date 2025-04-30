@@ -40,8 +40,13 @@ from .serializers import (
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q # Required for OR queries
+from rest_framework.pagination import PageNumberPagination 
 
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 15
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 
 
@@ -945,18 +950,65 @@ class VerifyOTPView(APIView):
 
         # Generate JWT tokens for the verified user
         refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
+        access_token = refresh.access_token
+        
+        # Add custom claims needed for websockets
+        access_token["user_id"] = user.id
+        access_token["is_student"] = user.is_student
+        access_token["is_supervisor"] = user.is_supervisor
 
         # Optional: Add user details to response
         user_serializer = UserSerializer(user) # Assuming you have a UserSerializer
 
         return Response({
             'refresh': str(refresh),
-            'access': access_token,
+            'access': str(access_token),
             'user': user_serializer.data # Optional: send user details back
         }, status=status.HTTP_200_OK)
 
-
+# Add a new WebSocket token debug view
+class WebSocketTokenDebugView(APIView):
+    """Debug endpoint to help diagnose WebSocket token issues"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Returns a valid token that can be used for WebSocket connections"""
+        try:
+            # Create a fresh token for the requesting user
+            refresh = RefreshToken.for_user(request.user)
+            access_token = refresh.access_token
+            
+            # Ensure it has the user_id claim needed for WebSockets
+            access_token["user_id"] = request.user.id
+            
+            # Token information for debugging
+            import jwt
+            from django.conf import settings
+            from rest_framework_simplejwt.settings import api_settings
+            
+            token_str = str(access_token)
+            secret_key = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
+            algorithm = api_settings.ALGORITHM
+            
+            # Debug info about the token
+            decoded = jwt.decode(
+                token_str,
+                options={"verify_signature": False},
+                algorithms=[algorithm]
+            )
+            
+            return Response({
+                'token': token_str,
+                'connection_example': f'ws://your-server/ws/chat/group/1/?token={token_str}',
+                'token_info': {
+                    'user_id': decoded.get('user_id'),
+                    'expires_at': decoded.get('exp'),
+                    'algorithm': algorithm,
+                    'token_type': decoded.get('token_type'),
+                }
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class CustomTokenObtainPairView(BaseTokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -1021,25 +1073,44 @@ class FollowToggleView(APIView):
 
 
 class FollowerListView(generics.ListAPIView):
+    """Lists users who follow the specified profile's user."""
     serializer_class = MinimalUserSerializer
-    permission_classes = [permissions.AllowAny]
-    # pagination_class = YourPaginationClass # Add if needed
+    permission_classes = [permissions.AllowAny] # Publicly viewable lists
+    pagination_class = StandardResultsSetPagination # Add pagination
+
     def get_queryset(self):
-        profile_id = self.kwargs.get('profile_id') # param name matches urls.py
+        profile_id = self.kwargs.get('profile_id')
         target_profile = get_object_or_404(Profile, id=profile_id)
         target_user = target_profile.user
         follower_ids = Follow.objects.filter(following=target_user).values_list('follower_id', flat=True)
-        return User.objects.filter(id__in=follower_ids).select_related('profile')
+        # Order by username for consistent pagination results
+        return User.objects.filter(id__in=follower_ids).select_related('profile').order_by('username')
+
+    # *** ADD method to pass request context to serializer ***
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
 
 class FollowingListView(generics.ListAPIView):
+    """Lists users whom the specified profile's user is following."""
     serializer_class = MinimalUserSerializer
-    permission_classes = [permissions.AllowAny]
-    # pagination_class = YourPaginationClass # Add if needed
+    permission_classes = [permissions.AllowAny] # Publicly viewable lists
+    pagination_class = StandardResultsSetPagination # Add pagination
+
     def get_queryset(self):
-        profile_id = self.kwargs.get('profile_id') # param name matches urls.py
+        profile_id = self.kwargs.get('profile_id')
         target_profile = get_object_or_404(Profile, id=profile_id)
         target_user = target_profile.user
         following_ids = Follow.objects.filter(follower=target_user).values_list('following_id', flat=True)
+        # Order by username for consistent pagination results
+        return User.objects.filter(id__in=following_ids).select_related('profile').order_by('username')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
         return User.objects.filter(id__in=following_ids).select_related('profile')
 
 # for mentionable users
