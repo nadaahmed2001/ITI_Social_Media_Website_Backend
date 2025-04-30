@@ -231,7 +231,6 @@ CORS_ALLOWED_ORIGINS = cors_origins.split(",") if cors_origins else [
     "http://127.0.0.1:5173",
     "https://iti-social-media-website-frontend.vercel.app",
 ]
-
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',
