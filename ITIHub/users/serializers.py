@@ -38,6 +38,11 @@ class MinimalUserSerializer(serializers.ModelSerializer):
             return Follow.objects.filter(follower=request.user, following=obj).exists()
         return False
 
+class ContributorProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['id', 'username', 'profile_picture']
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

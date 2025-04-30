@@ -4,6 +4,11 @@ from .views import (
     ContributorAPI,
     ProjectTagAPI,
     TagAPI,
+    ProjectLikeToggleView,
+    ProjectReviewListCreateView,
+    ProjectReviewDetailView
+    
+    
 )
 
 
@@ -22,5 +27,14 @@ urlpatterns = [
     
     path('tags/', TagAPI.as_view(), name='tag-list-create'),        # For POST and GET (list of tags)
     path('tags/<uuid:pk>/', TagAPI.as_view(), name='tag-detail-update-delete'),  # For GET (single tag), PUT, DELETE
+    
+    # Like/Unlike a Project
+    path('<uuid:project_pk>/like/', ProjectLikeToggleView.as_view(), name='project-like-toggle'),
+
+    # List/Create Reviews for a Project
+    path('<uuid:project_pk>/reviews/', ProjectReviewListCreateView.as_view(), name='project-review-list-create'),
+
+    # Retrieve/Update/Delete a specific Review
+    path('<uuid:project_pk>/reviews/<uuid:id>/', ProjectReviewDetailView.as_view(), name='project-review-detail'),
 
 ]

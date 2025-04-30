@@ -1,15 +1,22 @@
 from projects.models import Project
-from .serializers import ProjectSerializer
+from .serializers import ProjectSerializer, TagSerializer, ProjectReviewSerializer
 from rest_framework.response import Response
-from rest_framework import permissions
+from rest_framework import permissions, generics, serializers
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from users.models import Profile
-from projects.models import Project, Tag
+from projects.models import Project, Tag, ProjectLike, ProjectReview
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
+
+
+
+class ReviewPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 30
 
 
 
@@ -127,6 +134,78 @@ class ProjectAPI(APIView):
         project.delete()
         return Response({"message": "Project deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
+
+class ProjectLikeToggleView(APIView):
+    """ Handles Liking (POST) and Unliking (DELETE) a project. """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, project_pk, *args, **kwargs):
+        project = get_object_or_404(Project, pk=project_pk)
+        like, created = ProjectLike.objects.get_or_create(user=request.user, project=project)
+        if created:
+            # Optionally return the new like count or just success
+            return Response({"status": "liked", "like_id": like.id}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"status": "already_liked", "like_id": like.id}, status=status.HTTP_200_OK)
+
+    def delete(self, request, project_pk, *args, **kwargs):
+        project = get_object_or_404(Project, pk=project_pk)
+        deleted_count, _ = ProjectLike.objects.filter(user=request.user, project=project).delete()
+        if deleted_count > 0:
+            return Response({"status": "unliked"}, status=status.HTTP_200_OK) # Or 204
+        else:
+            return Response({"status": "not_liked", "detail": "You haven't liked this project."}, status=status.HTTP_404_NOT_FOUND)
+
+
+# --- NEW: Project Review Views ---
+class ProjectReviewListCreateView(generics.ListCreateAPIView):
+    """ List reviews for a project or create a new review. """
+    serializer_class = ProjectReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly] # Allow reading, require auth to create
+    pagination_class = ReviewPagination # Apply pagination
+
+    def get_queryset(self):
+        project_pk = self.kwargs.get('project_pk')
+        # Optimize by selecting related reviewer user/profile
+        return ProjectReview.objects.filter(project_id=project_pk).select_related('reviewer__profile') # Adjust if reviewer is Profile
+
+    def get_serializer_context(self):
+        # Pass request to serializer context (needed for MinimalUserSerializer potentially)
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
+
+    def perform_create(self, serializer):
+        project = get_object_or_404(Project, pk=self.kwargs.get('project_pk'))
+        # Check if user already reviewed this project (handled by unique_together, but good practice)
+        if ProjectReview.objects.filter(project=project, reviewer=self.request.user).exists():
+             raise serializers.ValidationError("You have already reviewed this project.") # Handled by DRF automatically due to unique_together
+        # Set reviewer and project automatically
+        serializer.save(reviewer=self.request.user, project=project)
+
+
+class ProjectReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """ Retrieve, Update or Delete a specific review. """
+    serializer_class = ProjectReviewSerializer
+    permission_classes = [permissions.IsAuthenticated] # Must be logged in
+    queryset = ProjectReview.objects.all() # Base queryset
+    lookup_field = 'id' # Assuming review ID is passed in URL
+
+    def get_queryset(self):
+        # Further filter by project if needed, though lookup_field usually suffices
+        project_pk = self.kwargs.get('project_pk')
+        return super().get_queryset().filter(project_id=project_pk)
+
+    def check_object_permissions(self, request, obj):
+        # Ensure only the reviewer can modify/delete their review
+        super().check_object_permissions(request, obj)
+        if request.method not in permissions.SAFE_METHODS and obj.reviewer != request.user:
+            self.permission_denied(request, message="You can only modify or delete your own reviews.")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
 class ProjectTagAPI(APIView):
     permission_classes = [IsAuthenticated]
