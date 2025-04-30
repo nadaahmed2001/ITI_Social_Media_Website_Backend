@@ -225,7 +225,9 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
 
 # Ensure CORS settings allow frontend to communicate with backend
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173',
+"https://iti-social-media-website-frontend.vercel.app",
+).split(',')
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',
