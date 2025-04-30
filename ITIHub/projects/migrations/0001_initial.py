@@ -2,7 +2,10 @@
 
 import django.db.models.deletion
 import django.db.models.functions.text
+import django.db.models.deletion
+import django.db.models.functions.text
 import uuid
+from django.conf import settings
 from django.db import migrations, models
 
 
@@ -90,5 +93,9 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
+            options={
+                'ordering': ['-created'],
+                'unique_together': {('reviewer', 'project')},
+            },
         ),
     ]
