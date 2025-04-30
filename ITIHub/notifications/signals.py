@@ -1,4 +1,4 @@
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
 from .models import Notification
 from users.models import Follow
@@ -124,12 +124,18 @@ def notify_follow(sender, instance, created, **kwargs):
             related_object_id=instance.id
         )
 
-@receiver(post_delete, sender=Follow)
+@receiver(pre_delete, sender=Follow)
 def notify_unfollow(sender, instance, **kwargs):
-    # Send an 'unfollow' notification when the follow relationship is deleted
+    from users.models import User
+    try:
+        follower = User.objects.get(id=instance.follower_id)
+        following = User.objects.get(id=instance.following_id)
+    except User.DoesNotExist:
+        return
+
     Notification.objects.create(
-        recipient=instance.following,
-        sender=instance.follower,
+        recipient=following,
+        sender=follower,
         notification_type="unfollow",
         related_content_type=ContentType.objects.get_for_model(instance),
         related_object_id=instance.id
