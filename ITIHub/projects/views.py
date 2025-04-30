@@ -10,6 +10,7 @@ from projects.models import Project, Tag, ProjectLike, ProjectReview
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
+from django.db.models import Count # Import Count
 
 
 
@@ -31,6 +32,44 @@ class IsProjectOwnerOrReadOnly(BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
         return obj.owner == request.user.profile
+
+class ProjectFeedPagination(PageNumberPagination):
+    page_size = 12 # Number of projects per page
+    page_size_query_param = 'page_size'
+    max_page_size = 48
+
+# --- NEW: Project Feed View ---
+class ProjectFeedView(generics.ListAPIView):
+    """
+    Provides a paginated list of all projects, sortable by 'created' or 'likes'.
+    """
+    serializer_class = ProjectSerializer
+    permission_classes = [permissions.AllowAny] # Feed is public
+    pagination_class = ProjectFeedPagination
+
+    def get_queryset(self):
+        queryset = Project.objects.select_related('owner__user').prefetch_related('tags', 'projectlike_set') # Optimize
+
+        # --- Sorting Logic ---
+        ordering = self.request.query_params.get('ordering', '-created') # Default to latest
+
+        if ordering == 'likes': # Sort by most liked
+            # Annotate with like count and order by it
+            queryset = queryset.annotate(
+                num_likes=Count('projectlike')
+            ).order_by('-num_likes', '-created') # Secondary sort by date
+        elif ordering == 'created': # Sort by oldest (explicitly)
+             queryset = queryset.order_by('created')
+        else: # Default to latest ('-created')
+            queryset = queryset.order_by('-created')
+
+        return queryset
+
+    def get_serializer_context(self):
+        # Pass request context for serializer methods (like current_user_like_id)
+        context = super().get_serializer_context()
+        context.update({"request": self.request})
+        return context
 
 # Project API
 class ProjectAPI(APIView):
