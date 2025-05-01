@@ -26,24 +26,26 @@ class GroupChatSerializer(serializers.ModelSerializer):
         return None
 
 class GroupMessageSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()  # Include the ID field
+    id = serializers.ReadOnlyField()
     sender = serializers.ReadOnlyField(source='sender.username')
+    sender_id = serializers.ReadOnlyField(source='sender.id')  # Add sender_id for WebSocket compatibility
 
     class Meta:
         model = GroupMessage
-        fields = ['id', 'content', 'timestamp', 'sender']  # Include 'id' in the fields
+        fields = ['id', 'content', 'timestamp', 'sender', 'sender_id']
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
     sender = serializers.ReadOnlyField(source='sender.username')
+    sender_id = serializers.ReadOnlyField(source='sender.id')  # Add sender_id for WebSocket compatibility
     receiver = serializers.ReadOnlyField(source='receiver.username')
+    receiver_id = serializers.ReadOnlyField(source='receiver.id')  # Add receiver_id for WebSocket compatibility
 
     class Meta:
         model = ChatMessage
-        fields = ['id', 'message', 'timestamp', 'sender', 'receiver']
+        fields = ['id', 'message', 'timestamp', 'sender', 'sender_id', 'receiver', 'receiver_id']
 
 class ChatBotMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatBotMessage
         fields = ['id', 'user', 'message', 'response', 'timestamp']
-        read_only_fields = ['id', 'timestamp']

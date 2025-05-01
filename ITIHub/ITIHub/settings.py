@@ -24,14 +24,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev-o
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway.app,.neon.tech').split(',')
-# Add healthcheck.railway.app if not already present
-if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('healthcheck.railway.app')
-
-# Proxy configuration for Railway and other deployment platforms
-USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Remove healthcheck.railway.app
+if 'healthcheck.railway.app' in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.remove('healthcheck.railway.app')
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
@@ -152,10 +148,6 @@ CHANNEL_LAYERS = {
 STATIC_URL = "static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Configure whitenoise for static files in production
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 # Cloudinary configuration from environment variables
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME', 'dsaznefnt'),
@@ -170,11 +162,6 @@ CLOUDINARY_STORAGE = {
 
 # Tell Django to use Cloudinary for media file storage
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
-# Optionally, for static files in production:
-if not DEBUG:
-    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
-    STATIC_ROOT = BASE_DIR / 'staticfiles_collected'  # For collectstatic
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
