@@ -105,7 +105,8 @@ class BatchViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         # Automatically set the supervisor to the logged-in user
-        serializer.save(supervisor=self.request.user)
+        # serializer.save(supervisor=self.request.user)
+        serializer.save()
 
 class StudentBatchViewSet(viewsets.ModelViewSet):
     queryset = StudentBatch.objects.all()

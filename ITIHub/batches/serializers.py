@@ -28,6 +28,7 @@ class BatchSerializer(serializers.ModelSerializer):
         program_id = validated_data.pop('program_id')
         track_id = validated_data.pop('track_id')
         request = self.context['request']
+        print(f"Creating batch with program_id: {program_id}, track_id: {track_id} and supervisor: {request.user}")
 
         program = Program.objects.get(id=program_id)
         track = Track.objects.get(id=track_id)
