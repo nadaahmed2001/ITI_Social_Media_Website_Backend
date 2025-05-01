@@ -13,22 +13,26 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class ProjectReviewSerializer(serializers.ModelSerializer):
-    reviewer = ContributorProfileSerializer(read_only=True) # If linking to Profile
-    reviewer_id = serializers.PrimaryKeyRelatedField( queryset = Profile.objects.all() , 
-                                                    source='reviewer', write_only=True, required=False
-                                                    )   
+    # *** CHANGE: Use ContributorProfileSerializer for the reviewer (Profile) ***
+    reviewer = ContributorProfileSerializer(read_only=True)
+    # *** CHANGE: reviewer_id now refers to Profile model ***
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=Profile.objects.all(), # Query Profiles
+        source='reviewer', write_only=True, required=False # Set automatically in view
+    )
 
     class Meta:
         model = ProjectReview
+        # Ensure fields match the model and desired output
         fields = ['id', 'reviewer', 'reviewer_id', 'project', 'body', 'vote', 'created', 'modified']
-        read_only_fields = ['project', 'reviewer', 'created', 'modified'] # Project/Reviewer set by view/logic
+        # Reviewer and project are set in the view's perform_create
+        read_only_fields = ['project', 'reviewer', 'created', 'modified']
 
     def validate(self, data):
-        # Ensure either body or vote is provided
+        # Keep validation logic
         if not data.get('body', '').strip() and not data.get('vote'):
             raise serializers.ValidationError("A review must have either a comment body or a vote.")
         return data
-    
     
 
 

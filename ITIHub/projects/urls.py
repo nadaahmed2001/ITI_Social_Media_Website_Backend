@@ -6,7 +6,8 @@ from .views import (
     TagAPI,
     ProjectLikeToggleView,
     ProjectReviewListCreateView,
-    ProjectReviewDetailView
+    ProjectReviewDetailView,
+    ProjectFeedView
     
     
 )
@@ -16,6 +17,9 @@ urlpatterns = [
     
     # Project api
     path('', ProjectAPI.as_view(), name='project_list_create_api'),  # List and Create
+    
+    path('feed/', ProjectFeedView.as_view(), name='project-feed'), # <-- ADD THIS
+
     path('<uuid:pk>/', ProjectAPI.as_view(), name='project_detail_update_delete_api'),  # Retrieve, Update, Delete
     
     # Project contributors api

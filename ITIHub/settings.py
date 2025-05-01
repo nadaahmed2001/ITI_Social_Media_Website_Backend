@@ -238,7 +238,7 @@ CORS_ALLOW_HEADERS = [
     'access-control-allow-origin'  # Allow this header to be processed
 ]
 # In production, this should be False and specific origins should be set
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Add to ensure JWT works properly in production
 REST_FRAMEWORK = {
@@ -251,7 +251,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     # Add exception handler to debug authentication issues
-    'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
+    # 'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
 }
 
 # JWT settings - ensure these are properly configured

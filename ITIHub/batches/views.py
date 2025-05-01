@@ -102,6 +102,11 @@ class BatchViewSet(viewsets.ModelViewSet):
             {"error": "Only 'active' field can be updated."},
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+    def perform_create(self, serializer):
+        # Automatically set the supervisor to the logged-in user
+        # serializer.save(supervisor=self.request.user)
+        serializer.save()
 
 class StudentBatchViewSet(viewsets.ModelViewSet):
     queryset = StudentBatch.objects.all()
