@@ -20,6 +20,8 @@ class BatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Batch
         fields = "__all__"
+        # read_only_fields = ['supervisor']
+
 
 class StudentBatchSerializer(serializers.ModelSerializer):
     class Meta:
