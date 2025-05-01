@@ -1,10 +1,8 @@
-from django.urls import re_path
-from . import consumers
+# filepath: /home/nizar/Desktop/iti_social_meidia/ITI_Social_Media_Website_Backend/ITIHub/chat/routing.py
+from django.urls import path
+from .consumers import GroupChatConsumer, PrivateChatConsumer
 
 websocket_urlpatterns = [
-    # Group chat route - matches /ws/chat/group/1/
-    re_path(r'^ws/chat/group/(?P<group_id>\w+)/$', consumers.GroupChatConsumer.as_asgi()),
-    
-    # Private chat route - matches /ws/chat/private/1/
-    re_path(r'^ws/chat/private/(?P<user_id>\w+)/$', consumers.PrivateChatConsumer.as_asgi()),
+    path('ws/chat/group/<int:group_id>/', GroupChatConsumer.as_asgi()),
+    path('ws/chat/private/<int:user_id>/', PrivateChatConsumer.as_asgi()),
 ]
