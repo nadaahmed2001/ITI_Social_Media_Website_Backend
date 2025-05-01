@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings  # Import settings to reference AUTH_USER_MODEL
-
+import logging
+logger = logging.getLogger(__name__)
 
 class GroupChat(models.Model):
     name = models.CharField(max_length=255,  blank=False, default='Group')
