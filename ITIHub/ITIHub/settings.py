@@ -222,7 +222,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     # Add exception handler to debug authentication issues
-    'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
+    # 'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
 }
 
 # JWT Settings
