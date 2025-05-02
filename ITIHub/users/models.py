@@ -117,10 +117,7 @@ class Follow(models.Model):
         unique_together = ('follower', 'following')  # Prevents duplicate follows
 
     def __str__(self):
-        follower = self.follower.username if self.follower else "Unknown"
-        following = self.following.username if self.following else "Unknown"
-        return f"{follower} follows {following}"
-
+        return f"{self.follower.username} follows {self.following.username}"
 
 
 # Table to store the email change requests

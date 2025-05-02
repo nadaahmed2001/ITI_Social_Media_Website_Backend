@@ -117,8 +117,12 @@ try:
             'PASSWORD': tmpPostgres.password,
             'HOST': tmpPostgres.hostname,
             'PORT': tmpPostgres.port or 5432,
+            'CONN_MAX_AGE': 60,  # Connection lifetime in seconds
             'OPTIONS': {
                 'sslmode': 'require',
+                'connect_timeout': 5,  # Timeout for establishing connections
+                'statement_timeout': 5000,  # Query timeout in milliseconds
+                'max_connections': 10,  # Max number of database connections
             }
         }
     }
@@ -137,40 +141,45 @@ except Exception as e:
         }
     }
 
-# Redis configuration for channels
+# Redis configuration for channels - More robust settings
 redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
 print(f"Using REDIS_URL: {redis_url[:10]}...")  # Debug info
 try:
-    # Parse the URL to ensure it's valid and log more details
+    # Parse the URL to ensure it's valid
     import urllib.parse
     parsed_redis = urllib.parse.urlparse(redis_url)
     redis_host = parsed_redis.hostname or "localhost"
     redis_port = parsed_redis.port or 6379
-    redis_password = parsed_redis.password or None
     print(f"Redis connection details: {redis_host}:{redis_port}")
-    
-    # Configure channel layers with the parsed URL and improved reliability settings
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [redis_url],
-                # Connection pool settings for better reliability
-                "capacity": 1500,
-                "expiry": 10,  # Reduce message expiry for faster error detection
-                # Don't use symmetric encryption in production as it adds overhead
-                # "symmetric_encryption_keys": [SECRET_KEY],
-                # Retry settings for Redis connections
-                "connect_timeout": 10,
-                "ping_interval": 30,
-                "ping_timeout": 10,
-                "reconnect_scheme": [1, 2, 5, 10],  # Reduced reconnect backoff
+    # In-memory fallback settings for local development
+    if (redis_host == "localhost"):
+        print("Using in-memory channel layer for local development")
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels.layers.InMemoryChannelLayer",
+            }
+        }
+    else:
+        # Configure Redis channel layers for production
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels_redis.core.RedisChannelLayer",
+                "CONFIG": {
+                    "hosts": [redis_url],
+                    "capacity": 500,
+                    "expiry": 5,
+                    "connect_timeout": 1,
+                    "socket_timeout": 1,
+                    "socket_keepalive": True,
+                    "retry_on_timeout": True,
+                    "ping_interval": 30,
+                    "ping_timeout": 10,
+                },
             },
-        },
-    }
+        }
 except Exception as e:
-    print(f"Error configuring Redis: {e}")
-    # Fallback to in-memory channel layer for development/testing
+    print(f"Error configuring Redis: {e}, using in-memory channel layer instead")
+    # Fallback to in-memory channel layer
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
@@ -180,7 +189,6 @@ except Exception as e:
 # Static files configuration
 STATIC_URL = "static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
 # Configure whitenoise for static files in production
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
@@ -196,10 +204,8 @@ CLOUDINARY_STORAGE = {
     'RESOURCE_TYPE': os.environ.get('CLOUDINARY_RESOURCE_TYPE', 'auto'),  # 'image', 'video', 'raw', 'auto'
     'OVERWRITE': os.environ.get('CLOUDINARY_OVERWRITE', 'False').lower() == 'true',  # Prevent overwriting files with same name
 }
-
 # Tell Django to use Cloudinary for media file storage
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-
 # Optionally, for static files in production:
 if not DEBUG:
     STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
@@ -225,12 +231,7 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
 
 # Ensure CORS settings allow frontend to communicate with backend
-cors_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "")
-CORS_ALLOWED_ORIGINS = cors_origins.split(",") if cors_origins else [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://iti-social-media-website-frontend.vercel.app",
-]
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',
@@ -266,24 +267,19 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': False,
-
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', SECRET_KEY),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
-
     'AUTH_HEADER_TYPES': ('Bearer',),  # Add this to ensure Bearer prefix is accepted
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Standardize the header name
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Standardize the header name accepted
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
-
     'JTI_CLAIM': 'jti',
 }
-
 # Make JWT_SECRET_KEY available separately for middleware to use
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
 
@@ -307,7 +303,6 @@ default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 # Add this at the end of the file or with other Django settings
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 LOGGING = {
     'version': 1,
@@ -339,3 +334,8 @@ LOGGING = {
 }
 
 DEBUG = True
+
+DB_QUERY_TIMEOUT_MS = 3000  # 3 seconds in milliseconds
+# Add these timeout settings to improve request handling
+ASGI_REQUEST_TIMEOUT = 15  # seconds - Maximum time for ASGI requests before timeout
+HTTP_REQUEST_TIMEOUT = 10  # seconds - Maximum time for HTTP requests

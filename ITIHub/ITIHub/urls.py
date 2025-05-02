@@ -42,14 +42,12 @@ def safe_include(urlconf_module):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/users/", include("users.urls")),
-    path("api/supervisor/", include("batches.urls")),
+    path("api/batches/", include("batches.urls")),
     path("api/posts/", include("posts.urls")),
     path("api/notifications/", include("notifications.urls")),
     path("api/projects/", include("projects.urls")),
     path("api/chat/", include("chat.urls")),
-    # path("api/", include("core.urls")),  # Add core URLs here
     path("health/", health_check, name="health_check"),
-    # Add this line to support frontend health check expectation
     path("api/health-check/", health_check, name="api_health_check"),
 ]
 

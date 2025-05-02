@@ -3,8 +3,7 @@ from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from chat.models import GroupChat
 from batches.models import Batch, StudentBatch
-from .models import Profile, Follow
-import traceback
+from .models import Profile
 
 #from django.contrib.auth.models import User ---> instead we will import the custom user model
 from .models import User
@@ -78,18 +77,3 @@ def deleteProfile(sender, instance, **kwargs):
 post_save.connect(createProfile, sender=User)
 post_save.connect(updateProfile, sender=Profile)
 post_delete.connect(deleteProfile, sender=Profile)
-
-
-
-@receiver(post_save, sender=Follow)
-def debug_follow_creation(sender, instance, created, **kwargs):
-    print("🚨 Follow signal triggered")
-    try:
-        if created:
-            print(f"New Follow created: Follower = {instance.follower}, Following = {instance.following}")
-    except Exception as e:
-        print("Error in Follow signal:")
-        print(str(e))
-        traceback.print_exc()
-
-
