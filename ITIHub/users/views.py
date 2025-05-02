@@ -882,9 +882,9 @@ class SkillAPI(APIView):
     def post(self, request):
         # Check if the skill name already exists
         skill_name = request.data.get('name').strip()
-        # Case-insensitive check for existing skill name
-        if Skill.objects.filter(name__iexact=skill_name).exists():
-            return Response({"detail": "A skill with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
+        # # Case-insensitive check for existing skill name
+        # if Skill.objects.filter(name__iexact=skill_name).exists():
+        #     return Response({"detail": "A skill with this name already exists."}, status=status.HTTP_400_BAD_REQUEST)
 
         # Add a new skill to the logged-in user's profile
         profile = request.user.profile
