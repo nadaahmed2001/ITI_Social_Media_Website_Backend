@@ -47,9 +47,7 @@ urlpatterns = [
     path("api/notifications/", include("notifications.urls")),
     path("api/projects/", include("projects.urls")),
     path("api/chat/", include("chat.urls")),
-    path("api/", include("core.urls")),  # Add core URLs here
     path("health/", health_check, name="health_check"),
-    # Add this line to support frontend health check expectation
     path("api/health-check/", health_check, name="api_health_check"),
 ]
 

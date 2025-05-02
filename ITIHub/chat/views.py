@@ -3,21 +3,28 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, permissions
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from .models import GroupChat, GroupMessage, ChatMessage, ChatBotMessage
-from .serializers import GroupChatSerializer, GroupMessageSerializer, ChatMessageSerializer, ChatBotMessageSerializer
+from .models import GroupChat, GroupMessage, ChatMessage
+from .serializers import GroupChatSerializer, GroupMessageSerializer, ChatMessageSerializer
 from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import api_view
+import openai  # Import OpenAI library
+from .models import ChatBotMessage
+from .serializers import ChatBotMessageSerializer
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.authentication import TokenAuthentication
-from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 import openai
-import os
 from django.conf import settings
+from django.http import JsonResponse
+import json
+import logging
+from rest_framework_simplejwt.tokens import RefreshToken
+
+logger = logging.getLogger(__name__)
 
 
 # 🟢 View Group Chat Page
@@ -268,82 +275,40 @@ def delete_group_message(request, group_id, message_id):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotView(APIView):
-    # Support multiple authentication methods
-    authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    
     def post(self, request, *args, **kwargs):
-        # Debug authentication info
-        print(f"User authenticated: {request.user.is_authenticated}")
-        print(f"User: {request.user.username if request.user.is_authenticated else 'Anonymous'}")
-        print(f"Auth header: {request.META.get('HTTP_AUTHORIZATION', 'Not provided')}")
-        
+        user = request.user
+        user_message = request.data.get('message', '').strip()
+        if not user_message:
+            return Response({"error": "Message cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+        openai.api_key = settings.OPENAI_API_KEY
         try:
-            # Get message from request
-            message = request.data.get('message')
-            if not message:
-                return Response(
-                    {"error": "Please provide a message"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Configure OpenAI client
-            api_key = settings.OPENAI_API_KEY
-            if not api_key:
-                return Response(
-                    {"error": "OpenAI API key is not configured"}, 
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE
-                )
-                
-            openai.api_key = api_key
-            
-            # Print API key for debugging (first few chars)
-            if api_key:
-                masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
-                print(f"Using OpenAI API key: {masked_key}")
-            
-            # Make API call to OpenAI using the more modern Client approach
-            try:
-                from openai import OpenAI
-                client = OpenAI(api_key=api_key)
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant for ITI students."},
-                        {"role": "user", "content": message}
-                    ]
-                )
-                ai_response = response.choices[0].message.content
-            except ImportError:
-                # Fall back to the older approach
-                response = openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are a helpful assistant for ITI students."},
-                        {"role": "user", "content": message}
-                    ]
-                )
-                ai_response = response.choices[0].message.content
-            
-            # Save the message and response to the database if the model exists
-            try:
-                ChatBotMessage.objects.create(
-                    user=request.user,
-                    message=message,
-                    response=ai_response
-                )
-            except Exception as e:
-                # If saving to database fails, just log the error but continue
-                print(f"Error saving ChatBotMessage: {e}")
-                
-            return Response({"response": ai_response}, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            print(f"ChatBot Error: {str(e)}")
-            return Response(
-                {"error": f"An error occurred: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            completion = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": (
+                        "You are an assistant for ITI Scholarships students. "
+                        "You give academic advice, share study resources, explain ITI rules, "
+                        "and support students in making the most of their scholarship."
+                    )},
+                    {"role": "user", "content": user_message},
+                ],
+                max_tokens=300,
+                temperature=0.7
             )
+            bot_response = completion.choices[0].message['content']
+            # Save the conversation in the database
+            chatbot_message = ChatBotMessage.objects.create(
+                user=user,
+                message=user_message,
+                response=bot_response
+            )
+            serializer = ChatBotMessageSerializer(chatbot_message)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"Failed to get response: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class ChatBotMessagesView(APIView):
@@ -354,3 +319,189 @@ class ChatBotMessagesView(APIView):
         messages = ChatBotMessage.objects.filter(user=user).order_by('timestamp')
         serializer = ChatBotMessageSerializer(messages, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+@login_required
+def websocket_test(request):
+    """Serve the WebSocket test page with a fresh token"""
+    # Generate a token for the current user
+    refresh = RefreshToken.for_user(request.user)
+    access_token = refresh.access_token
+    access_token['user_id'] = request.user.id
+    
+    return render(request, 'websocket_test.html', {
+        'token': str(access_token),
+        'user': request.user
+    })
+
+@method_decorator(csrf_exempt, name='dispatch')
+class WebSocketDiagnosticView(APIView):
+    """API view to diagnose WebSocket connection issues"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Check WebSocket configuration"""
+        from django.conf import settings
+        import jwt
+        from rest_framework_simplejwt.tokens import RefreshToken
+        
+        # Generate a fresh token for the current user
+        refresh = RefreshToken.for_user(request.user)
+        access_token = refresh.access_token
+        access_token['user_id'] = request.user.id
+        token = str(access_token)
+        
+        # Check channel layers configuration
+        channel_layers_ok = True
+        redis_config = {}
+        try:
+            cl_config = settings.CHANNEL_LAYERS
+            backend = cl_config["default"]["BACKEND"]
+            if "redis" in backend.lower():
+                redis_config = cl_config["default"]["CONFIG"]
+                channel_layers_ok = True
+            else:
+                redis_config = {"info": "Using in-memory channel layer"}
+        except Exception as e:
+            channel_layers_ok = False
+            logger.error(f"Error checking channel layers: {e}")
+            
+        # Validate the token can be decoded
+        token_ok = False
+        token_payload = {}
+        try:
+            token_payload = jwt.decode(
+                token, 
+                options={"verify_signature": False},
+                algorithms=['HS256']
+            )
+            token_ok = True
+        except Exception as e:
+            logger.error(f"Token validation error: {e}")
+            
+        # Return diagnostic info
+        return JsonResponse({
+            "websocket": {
+                "channel_layers_ok": channel_layers_ok,
+                "redis_config": redis_config,
+                "test_token": token,
+                "token_valid": token_ok,
+                "token_payload": token_payload,
+                "test_urls": {
+                    "group_chat": f"ws://{request.get_host()}/ws/chat/group/1/?token={token}",
+                    "private_chat": f"ws://{request.get_host()}/ws/chat/private/1/?token={token}",
+                }
+            }
+        })
+
+class TestJWTTokenView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        import jwt
+        
+        # Generate a fresh token for testing
+        refresh = RefreshToken.for_user(request.user)
+        access = refresh.access_token
+        
+        # Add custom claims like in your actual tokens
+        access['user_id'] = request.user.id
+        if hasattr(request.user, 'is_student'):
+            access['is_student'] = request.user.is_student
+        if hasattr(request.user, 'is_supervisor'):
+            access['is_supervisor'] = request.user.is_supervisor
+            
+        # Return token and decoded payload for verification
+        token = str(access)
+        decoded = jwt.decode(token, options={"verify_signature": False}, algorithms=['HS256'])
+        
+        # Return WebSocket test URLs
+        host = request.get_host()
+        ws_protocol = 'wss' if request.is_secure() else 'ws'
+        
+        return Response({
+            'token': token,
+            'decoded': decoded,
+            'test_urls': {
+                'private_chat': f"{ws_protocol}://{host}/ws/chat/private/{request.user.id}/?token={token}",
+                'group_chat': f"{ws_protocol}://{host}/ws/chat/group/1/?token={token}"
+            }
+        })
+
+@method_decorator(csrf_exempt, name="dispatch")
+class WebSocketTestView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Generate test tokens and URLs for WebSocket testing"""
+        # Generate a fresh token for the current user
+        refresh = RefreshToken.for_user(request.user)
+        access_token = refresh.access_token
+        access_token['user_id'] = request.user.id
+        token = str(access_token)
+        
+        # Generate URLs for testing
+        ws_protocol = 'wss' if request.is_secure() else 'ws'
+        host = request.get_host()
+        
+        return JsonResponse({
+            'token': token,
+            'user_id': request.user.id,
+            'username': request.user.username,
+            'test_commands': {
+                'private_chat': f"wscat -c \"{ws_protocol}://{host}/ws/chat/private/RECIPIENT_ID/?token={token}\"",
+                'group_chat': f"wscat -c \"{ws_protocol}://{host}/ws/chat/group/GROUP_ID/?token={token}\"",
+            },
+            'test_messages': {
+                'send': '{"action": "send", "message": "Hello, this is a test message"}',
+                'edit': '{"action": "edit", "message_id": 123, "new_content": "Updated message content"}',
+                'delete': '{"action": "delete", "message_id": 123}',
+                'clear': '{"action": "clear"}'
+            }
+        })
+
+@method_decorator(csrf_exempt, name="dispatch")
+class WebSocketConnectionInfoView(APIView):
+    """API endpoint to get WebSocket connection URLs with authentication token"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """
+        Return WebSocket connection URLs and authentication token
+        for the frontend to establish WebSocket connections
+        """
+        # Generate a fresh token for the current user
+        refresh = RefreshToken.for_user(request.user)
+        access_token = refresh.access_token
+        access_token['user_id'] = request.user.id
+        token = str(access_token)
+        
+        # Create WebSocket connection URLs
+        host = request.get_host()
+        ws_protocol = 'wss' if request.is_secure() else 'ws'
+        
+        # Get user's groups
+        group_chats = GroupChat.objects.filter(members=request.user).values('id', 'name')
+        
+        # Get private chats - users who have exchanged messages with current user
+        private_chats = User.objects.filter(
+            Q(sent_messages__receiver=request.user) | 
+            Q(received_messages__sender=request.user)
+        ).distinct().values('id', 'username')
+        
+        return Response({
+            'token': token,
+            'websocket_base_url': f"{ws_protocol}://{host}/ws/chat/",
+            'connection_examples': {
+                'group_chat': f"const socket = new WebSocket('{ws_protocol}://{host}/ws/chat/group/GROUP_ID/?token={token}');",
+                'private_chat': f"const socket = new WebSocket('{ws_protocol}://{host}/ws/chat/private/USER_ID/?token={token}');",
+            },
+            'message_formats': {
+                'send': {"action": "send", "message": "Hello world"},
+                'edit': {"action": "edit", "message_id": 123, "new_content": "Updated message"},  
+                'delete': {"action": "delete", "message_id": 123},
+                'clear': {"action": "clear"}
+            },
+            'group_chats': list(group_chats),
+            'private_chats': list(private_chats)
+        })

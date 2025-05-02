@@ -2,10 +2,13 @@ from django.urls import path
 from .views import (
     GroupChatListCreateView, GroupChatDetailView, GroupMessageListCreateView,
     ChatMessageListCreateView, UserChatDashboardView, PrivateChatUsersView,
-    ClearGroupChatView, ClearPrivateChatView, EditMessageView, DeleteMessageView, delete_group_message, ChatBotView, ChatBotMessagesView, EditGroupMessageView
+    ClearGroupChatView, ClearPrivateChatView, EditMessageView, DeleteMessageView, 
+    delete_group_message, ChatBotView, ChatBotMessagesView, EditGroupMessageView, 
+    WebSocketDiagnosticView, TestJWTTokenView, WebSocketConnectionInfoView, WebSocketTestView
 )
 
 urlpatterns = [
+    # Core chat endpoints (present in both versions)
     path('groups/', GroupChatListCreateView.as_view(), name='group_chat_list_create'),
     path('groups/<int:pk>/', GroupChatDetailView.as_view(), name='group_chat_detail'),
     path('groups/<int:group_id>/messages/', GroupMessageListCreateView.as_view(), name='group_message_list_create'),
@@ -20,4 +23,10 @@ urlpatterns = [
     path('chatbot/', ChatBotView.as_view(), name='chatbot'),
     path('chatbot/messages/', ChatBotMessagesView.as_view(), name='chatbot-messages'),
     path('groups/<int:group_id>/messages/<int:message_id>/edit/', EditGroupMessageView.as_view(), name='edit-group-message'),
+    
+    # WebSocket diagnostic and testing endpoints (beneficial for WebSocket functionality)
+    path('diagnostic/', WebSocketDiagnosticView.as_view(), name='websocket-diagnostic'),
+    path('test-token/', TestJWTTokenView.as_view(), name='test-jwt-token'),
+    path('ws-connect-info/', WebSocketConnectionInfoView.as_view(), name='websocket-connection-info'),
+    path('ws-test/', WebSocketTestView.as_view(), name='websocket-test'),
 ]
