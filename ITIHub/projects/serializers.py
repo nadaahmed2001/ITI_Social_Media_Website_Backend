@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from projects.models import Project, Tag
+from projects.models import Project, Tag, ProjectLike, ProjectReview
 from users.models import Profile
 from django.db import transaction
+from users.serializers import ContributorProfileSerializer
 import pprint
 
 
@@ -11,10 +12,31 @@ class TagSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class ContributorProfileSerializer(serializers.ModelSerializer):
+class ProjectReviewSerializer(serializers.ModelSerializer):
+    # *** CHANGE: Use ContributorProfileSerializer for the reviewer (Profile) ***
+    reviewer = ContributorProfileSerializer(read_only=True)
+    # *** CHANGE: reviewer_id now refers to Profile model ***
+    reviewer_id = serializers.PrimaryKeyRelatedField(
+        queryset=Profile.objects.all(), # Query Profiles
+        source='reviewer', write_only=True, required=False # Set automatically in view
+    )
+
     class Meta:
-        model = Profile
-        fields = ['id', 'username', 'profile_picture']
+        model = ProjectReview
+        # Ensure fields match the model and desired output
+        fields = ['id', 'reviewer', 'reviewer_id', 'project', 'body', 'vote', 'created', 'modified']
+        # Reviewer and project are set in the view's perform_create
+        read_only_fields = ['project', 'reviewer', 'created', 'modified']
+
+    def validate(self, data):
+        # Keep validation logic
+        if not data.get('body', '').strip() and not data.get('vote'):
+            raise serializers.ValidationError("A review must have either a comment body or a vote.")
+        return data
+    
+
+
+
 
 class ProjectSerializer(serializers.ModelSerializer):
     owner = ContributorProfileSerializer(read_only=True)
@@ -28,6 +50,9 @@ class ProjectSerializer(serializers.ModelSerializer):
         write_only=True, required=False
     )
     
+    likes_count = serializers.SerializerMethodField()
+    current_user_like_id = serializers.SerializerMethodField() # Send ID if liked, null otherwise
+    reviews_count = serializers.SerializerMethodField() # Optional: just the count
 
     class Meta:
         model = Project
@@ -38,9 +63,29 @@ class ProjectSerializer(serializers.ModelSerializer):
             'contributors',
             'created', 'modified',
             'tag_names',
+            'likes_count', 'current_user_like_id',
+            'reviews_count'
         ]
         read_only_fields = ['owner', 'tags', 'contributors', 'created', 'modified']
 
+    def get_likes_count(self, obj):
+        # Use the related_name (default 'projectlike_set') or the property
+        return obj.like_count # Assumes @property exists or use obj.projectlike_set.count()
+
+    def get_current_user_like_id(self, obj):
+        """ Check if the requesting user liked this project and return the Like ID. """
+        request = self.context.get('request', None)
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            try:
+                like = ProjectLike.objects.get(user=request.user, project=obj)
+                return like.id # Return the ID of the like object
+            except ProjectLike.DoesNotExist:
+                return None # User hasn't liked it
+        return None # Anonymous user
+
+    def get_reviews_count(self, obj):
+        return obj.reviews.count() # Assumes related_name='reviews'
+    
     def _handle_tags(self, instance, tag_names):
         print(f"--- _handle_tags called for project {instance.id} ---") # DEBUG
         print(f"Received tag names list: {tag_names}") # DEBUG

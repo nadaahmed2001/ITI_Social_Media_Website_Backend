@@ -2,6 +2,9 @@ from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 from chat.models import GroupChat  # Import the GroupChat model from the chat app
+import logging
+logger = logging.getLogger(__name__)
+
 
 class Department(models.Model):
     name = models.CharField(max_length=50)
@@ -31,17 +34,18 @@ class Batch(models.Model):
     created_at = models.DateTimeField(default=now)
     active = models.BooleanField(default=True)  
 
+
     def save(self, *args, **kwargs):
-        # Check if batch is new
-        is_new = self.pk is None  
+        is_new = self.pk is None
         super().save(*args, **kwargs)
 
         if is_new:
-            # Create a group chat for the batch with the supervisor as the admin
-            group_chat = GroupChat.objects.create(name=f"Batch {self.name} Chat")
-            group_chat.supervisors.add(self.supervisor)  # Add supervisor as admin
-            # group_chat.batch = self  # Add the relationship between Batch and GroupChat (san)
-            # group_chat.save()
+            try:
+                group_chat = GroupChat.objects.create(name=f"Batch {self.name} Chat")
+                group_chat.supervisors.add(self.supervisor)
+            except Exception as e:
+                logger.error(f"Failed to create group chat for batch '{self.name}': {e}")
+
     def __str__(self):
         return f"{self.name} - {self.track.name} - {self.program.name}"
 
