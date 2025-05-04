@@ -42,7 +42,7 @@ def safe_include(urlconf_module):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/users/", include("users.urls")),
-    path("api/supervisor/", include("batches.urls")),
+    path("api/batches/", include("batches.urls")),
     path("api/posts/", include("posts.urls")),
     path("api/notifications/", include("notifications.urls")),
     path("api/projects/", include("projects.urls")),
