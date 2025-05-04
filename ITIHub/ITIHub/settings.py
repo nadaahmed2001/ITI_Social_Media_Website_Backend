@@ -230,7 +230,7 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
 
 # Ensure CORS settings allow frontend to communicate with backend
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,healthcheck.railway.app').split(',')
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'content-type',
@@ -243,7 +243,7 @@ CORS_ALLOW_HEADERS = [
     'access-control-allow-origin'  # Allow this header to be processed
 ]
 # In production, this should be False and specific origins should be set
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 
 # Add to ensure JWT works properly in production
 REST_FRAMEWORK = {
