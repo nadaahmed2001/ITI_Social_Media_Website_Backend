@@ -29,6 +29,8 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 if "healthcheck.railway.app" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("healthcheck.railway.app")
 
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
 # User model configuration
 AUTH_USER_MODEL = "users.User"
 LOGIN_URL = '/users/student/login/'
