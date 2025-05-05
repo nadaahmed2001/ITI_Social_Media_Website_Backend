@@ -31,6 +31,10 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://itisocialmediawebsitebackend-production.up.railway.app"
+]
+
 # User model configuration
 AUTH_USER_MODEL = "users.User"
 LOGIN_URL = '/users/student/login/'
