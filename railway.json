@@ -20,7 +20,7 @@
       "REDIS_URL": "${REDIS_URL}",
       "DEBUG": "True",
       "CROSS_ORIGIN_ALLOW_ALL": "True",
-      "ALLOWED_HOSTS": "*.up.railway.app,*.neon.tech,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech,*.healthcheck.railway.app,healthcheck.railway.app", 
+      "ALLOWED_HOSTS": "itisocialmediawebsitebackend-production.up.railway.app,healthcheck.railway.app,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech",
       "CORS_ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://iti-social-media-website-frontend.vercel.app,https://healthcheck.railway.app",
       "CORS_ALLOW_METHODS": "DELETE,GET,OPTIONS,PATCH,POST,PUT",
       "CORS_ALLOW_HEADERS": "*",
