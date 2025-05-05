@@ -19,7 +19,7 @@
       "DATABASE_URL": "${DATABASE_URL}",
       "REDIS_URL": "${REDIS_URL}",
       "DEBUG": "True",
-      "CROSS_ORIGIN_ALLOW_ALL": "True",
+      "CROSS_ORIGIN_ALLOW_ALL": "False",
       "CORS_ALLOW_CREDENTIALS" : "True",
       "ALLOWED_HOSTS": "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app,itisocialmediawebsitebackend-production.up.railway.app,healthcheck.railway.app,ep-ancient-snow-a402yv88-pooler.us-east-1.aws.neon.tech",
       "CORS_ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://iti-social-media-website-frontend.vercel.app,https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app,https://healthcheck.railway.app",
