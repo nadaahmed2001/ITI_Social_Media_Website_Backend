@@ -90,11 +90,11 @@ class RegisterStudentView(APIView):
 
 
 
-
+@method_decorator(csrf_exempt, name="dispatch")
 class LoginView(APIView):
     permission_classes = [AllowAny]  # Allow unauthenticated users to access this view
 
-    @csrf_exempt
+    # @csrf_exempt
     def post(self, request):
         print("Inside POST in login view")
         serializer = LoginSerializer(data=request.data)

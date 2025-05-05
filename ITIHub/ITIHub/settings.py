@@ -4,6 +4,7 @@ import os
 import sys
 from urllib.parse import urlparse
 from datetime import timedelta
+import dj_database_url
 
 # Load environment variables early
 load_dotenv()
@@ -24,10 +25,18 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev-o
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-# Remove healthcheck.railway.app
-if 'healthcheck.railway.app' in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.remove('healthcheck.railway.app')
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# if "healthcheck.railway.app" not in ALLOWED_HOSTS:
+#     ALLOWED_HOSTS.append("healthcheck.railway.app")
+
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://itisocialmediawebsitebackend-production.up.railway.app",
+    "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app"
+]
+CSRF_COOKIE_SECURE = True  # Ensures CSRF cookie only sent over HTTPS
+SESSION_COOKIE_SECURE = True  # Ensures session cookie only sent over HTTPS
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
@@ -99,28 +108,72 @@ TEMPLATES = [
 WSGI_APPLICATION = "ITIHub.wsgi.application"
 ASGI_APPLICATION = 'ITIHub.asgi.application'
 
-# Database Configuration for Neon PostgreSQL
-try:
-    tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-    print(f"Parsed database: host={tmpPostgres.hostname}, db={tmpPostgres.path.replace('/', '')}")
+# # Database Configuration for Neon PostgreSQL
+# try:
+#     # tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+#     # print(f"Parsed database: host={tmpPostgres.hostname}, db={tmpPostgres.path.replace('/', '')}")
     
+#     # DATABASES = {
+#     #     'default': {
+#     #         'ENGINE': 'django.db.backends.postgresql',
+#     #         'NAME': tmpPostgres.path.replace('/', ''),
+#     #         'USER': tmpPostgres.username,
+#     #         'PASSWORD': tmpPostgres.password,
+#     #         'HOST': tmpPostgres.hostname,
+#     #         'PORT': tmpPostgres.port or 5432,
+#     #         'OPTIONS': {
+#     #             'sslmode': 'require',
+#     #         }
+#     #     }
+#     # }
+    
+#     # Deploy DB on railway
+#     DATABASES = {
+#         'default': {
+
+#             'ENGINE': 'django.db.backends.postgresql',
+
+#             'NAME': 'railway',
+
+#             'USER': 'postgres',
+
+#             'PASSWORD': 'IbSRPkWhMwLMRDdVCRxieRrfrZxCnnwu',
+
+#             'HOST': 'postgres.railway.internal',
+
+#             'PORT': '5432',
+
+#         }
+
+#     }
+
+
+
+# except Exception as e:
+#     print(f"Error setting up database: {str(e)}")
+#     # Fallback to local database if DATABASE_URL parsing fails
+#     print("WARNING: Using local database configuration!")
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': os.environ.get('DB_NAME', 'itihub'),
+#             'USER': os.environ.get('DB_USER', 'itihubuser'),
+#             'PASSWORD': os.environ.get('DB_PASSWORD', 'password'),
+#             'HOST': os.environ.get('DB_HOST', 'localhost'),
+#             'PORT': os.environ.get('DB_PORT', '5432'),
+#         }
+#     }
+
+
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': tmpPostgres.path.replace('/', ''),
-            'USER': tmpPostgres.username,
-            'PASSWORD': tmpPostgres.password,
-            'HOST': tmpPostgres.hostname,
-            'PORT': tmpPostgres.port or 5432,
-            'OPTIONS': {
-                'sslmode': 'require',
-            }
-        }
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
     }
-except Exception as e:
-    print(f"Error setting up database: {str(e)}")
-    # Fallback to local database if DATABASE_URL parsing fails
-    print("WARNING: Using local database configuration!")
+else:
+    print("WARNING: DATABASE_URL not set. Falling back to local config.")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -131,6 +184,8 @@ except Exception as e:
             'PORT': os.environ.get('DB_PORT', '5432'),
         }
     }
+
+
 
 # Redis configuration for channels
 redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
@@ -183,8 +238,12 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
 
 # Ensure CORS settings allow frontend to communicate with backend
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
+]
+print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+
+CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = [
     'content-type',
     'authorization',
@@ -196,7 +255,7 @@ CORS_ALLOW_HEADERS = [
     'access-control-allow-origin'  # Allow this header to be processed
 ]
 # In production, this should be False and specific origins should be set
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False').lower() == 'true'
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
 
 # Add to ensure JWT works properly in production
 REST_FRAMEWORK = {
