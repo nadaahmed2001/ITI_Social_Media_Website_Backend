@@ -33,7 +33,8 @@ print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
 CSRF_TRUSTED_ORIGINS = [
     "https://itisocialmediawebsitebackend-production.up.railway.app",
-    "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app"
+    "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app",
+    "http://localhost:5173",
 ]
 CSRF_COOKIE_SECURE = True  # Ensures CSRF cookie only sent over HTTPS
 SESSION_COOKIE_SECURE = True  # Ensures session cookie only sent over HTTPS
@@ -236,26 +237,44 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 
 # OpenAI API configuration
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
+import os
 
-# Ensure CORS settings allow frontend to communicate with backend
+# --------------------
+# CORS Configuration
+# --------------------
+
+# Load allowed origins from environment
 CORS_ALLOWED_ORIGINS = [
     origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
 ]
-print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")
+print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")  # Optional debug log
 
-CORS_ALLOW_CREDENTIALS = False
+# MUST be True if you're using cookies or Authorization headers from frontend
+CORS_ALLOW_CREDENTIALS = True
+
+# Explicitly disallow wildcard (*) origin when using credentials
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Allow these headers in CORS requests
 CORS_ALLOW_HEADERS = [
-    'content-type',
+    'accept',
     'authorization',
+    'content-type',
+    'origin',
     'x-csrftoken',
     'x-requested-with',
-    'accept',
-    'withcredentials',
-    'origin',  # Add origin header which is important for CORS
-    'access-control-allow-origin'  # Allow this header to be processed
 ]
-# In production, this should be False and specific origins should be set
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
+
+# Optional: if you're using DELETE/PUT, etc.
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 
 # Add to ensure JWT works properly in production
 REST_FRAMEWORK = {
