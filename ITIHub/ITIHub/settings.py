@@ -26,8 +26,8 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
-if "healthcheck.railway.app" not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append("healthcheck.railway.app")
+# if "healthcheck.railway.app" not in ALLOWED_HOSTS:
+#     ALLOWED_HOSTS.append("healthcheck.railway.app")
 
 print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 
