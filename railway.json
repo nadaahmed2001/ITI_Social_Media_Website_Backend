@@ -35,7 +35,7 @@
       "DJANGO_SUPERUSER_EMAIL": "admin@example.com",
       "WSGI_WORKERS": "4",
       "JWT_SECRET_KEY": "${JWT_SECRET_KEY}",
-      "FRONTEND_BASE_URL": "https://itisocialmediawebsitefrontend-production.up.railway.app",
+      "FRONTEND_BASE_URL": "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app",
       "WEBSOCKET_MAX_RETRY": "5",
       "WS_PING_INTERVAL": "30",
       "WS_PING_TIMEOUT": "10",
