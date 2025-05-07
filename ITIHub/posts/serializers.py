@@ -1,6 +1,13 @@
 from rest_framework import serializers
 from .models import Post,SavedPost, Comment, Attachment, Reaction
 from users.models import Profile, User
+import re
+
+# posts/serializers.py
+from rest_framework import serializers
+from .models import Reaction # Keep other necessary model imports
+from users.models import User, Profile # Import User and Profile
+
 
 class AttachmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,13 +26,19 @@ class PostSerializer(serializers.ModelSerializer):
     )
     author_id = serializers.SerializerMethodField(read_only=True)
     is_saved = serializers.SerializerMethodField()
-
+    # mentions = serializers.SlugRelatedField(
+    #     queryset=User.objects.all(), 
+    #     slug_field='username', 
+    #     many=True, 
+    #     required=False, 
+    #     allow_empty=True  
+    # )
 
 
     class Meta:
         model = Post
         fields = ["id", "author", "author_id", "author_profile_picture", "body", 
-                "created_on", "reaction_counts", "attachments", "attachment_urls","is_saved",]
+                "created_on", "reaction_counts", "attachments", "attachment_urls", "is_saved", ]
 
     def get_author(self, obj):
         return obj.author.username
@@ -54,10 +67,21 @@ class PostSerializer(serializers.ModelSerializer):
             return SavedPost.objects.filter(user=user, post=obj).exists()
         return False # Not saved if user is not authenticated
     
+    # def extract_mentions(self, text):
+    #     mentioned_usernames = set(re.findall(r'@(\w+)', text))
+    #     mentioned_users = User.objects.filter(username__in=mentioned_usernames)
+    #     return mentioned_users
+
+
     def create(self, validated_data):
         attachment_urls = validated_data.pop('attachment_urls', [])
+        # body = validated_data.get('body', '')
         post = Post.objects.create(**validated_data)
         
+        # Handle mentions
+        # mentions = self.extract_mentions(body)
+        # post.mentions.set(mentions)
+
         for url in attachment_urls:
             is_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'])
             is_video = any(ext in url.lower() for ext in ['.mp4', '.mov', '.avi', '.webm', '.mkv'])
@@ -87,13 +111,19 @@ class CommentSerializer(serializers.ModelSerializer):
     attachment_url = serializers.URLField(write_only=True, required=False, allow_null=True, allow_blank=True)
     author_id = serializers.SerializerMethodField(read_only=True)
     my_reaction = serializers.SerializerMethodField(read_only=True) # <-- ADD THIS
-
+    # mentions = serializers.SlugRelatedField(
+    #         queryset=User.objects.all(), 
+    #         slug_field='username', 
+    #         many=True, 
+    #         required=False, 
+    #         allow_empty=True  
+    #     )
 
     class Meta:
         model = Comment
         # Keep 'author_id' in fields
         fields = ["id", "post", "author", "author_id", "author_profile_picture", "comment",
-                "created_on", "reaction_counts", "my_reaction", "attachments", "attachment_url"]
+                "created_on", "reaction_counts", "my_reaction", "attachments", "attachment_url", ]
         # read_only_fields are implicitly handled for method fields, but keep others
         read_only_fields = ["author", "author_profile_picture", "reaction_counts", "attachments", "created_on"]
 
@@ -137,11 +167,17 @@ class CommentSerializer(serializers.ModelSerializer):
             return reaction.reaction_type
         except Reaction.DoesNotExist:
             return None
-        
+
+    # def extract_mentions(self, text):
+    #     mentioned_usernames = set(re.findall(r'@(\w+)', text))
+    #     mentioned_users = User.objects.filter(username__in=mentioned_usernames)
+    #     return mentioned_users
+            
     # --- Modified create method to handle attachment_url ---
     def create(self, validated_data):
         # Pop the attachment_url if it was sent and validated
         attachment_url = validated_data.pop('attachment_url', None)
+        # body = validated_data.get('comment', '')
         
         # Get the author from the request context (set by IsAuthenticated)
         # validated_data['author'] = self.context['request'].user # This should happen automatically if author is not read_only? 
@@ -149,6 +185,10 @@ class CommentSerializer(serializers.ModelSerializer):
 
         # Create the comment instance without the attachment_url
         comment = Comment.objects.create(**validated_data)
+        
+        # # Handle mentions
+        # mentions = self.extract_mentions(body)
+        # comment.mentions.set(mentions)
         
         # If an attachment URL was provided, create the Attachment object
         if attachment_url:
@@ -184,11 +224,6 @@ class UserInReactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = User 
         fields = ['id', 'username']
-
-# posts/serializers.py
-from rest_framework import serializers
-from .models import Reaction # Keep other necessary model imports
-from users.models import User, Profile # Import User and Profile
 
 # Remove or comment out UserInReactionSerializer if not used elsewhere
 # class UserInReactionSerializer(serializers.ModelSerializer): ...

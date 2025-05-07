@@ -17,6 +17,7 @@ class Post(models.Model):
     body = models.TextField(validators=[MaxLengthValidator(3000), MinLengthValidator(1)])
     created_on = models.DateTimeField(default=timezone.now)
     attachments = models.ManyToManyField(Attachment, blank=True)
+    # mentions = models.ManyToManyField(User, related_name='mentioned_in_posts', blank=True)
 
     def _str_(self):
         return f"Post by {self.author} on {self.created_on}"
@@ -24,6 +25,9 @@ class Post(models.Model):
     def reaction_counts(self):
         return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
     
+    # def get_mentions(self):
+    #     return self.mentions.all()
+
     class Meta:
         ordering = ['-created_on']
 
@@ -50,6 +54,8 @@ class Comment(models.Model):
     comment = models.TextField(validators=[MaxLengthValidator(2000), MinLengthValidator(1)])
     created_on = models.DateTimeField(auto_now_add=True)
     attachments = models.ManyToManyField(Attachment, blank=True)
+    # mentions = models.ManyToManyField(User, related_name='mentioned_in_comments', blank=True)
+
 
     def __str__(self):
         return f"Comment by {self.author.username} on {self.post}"
@@ -57,6 +63,9 @@ class Comment(models.Model):
     def reaction_counts(self):
         return {reaction: self.reaction_set.filter(reaction_type=reaction).count() for reaction, _ in Reaction.REACTIONS}
 
+    # def get_mentions(self):
+    #     return self.mentions.all()
+        
 class Reaction(models.Model):
     REACTIONS = [
         ('Like', 'Like'),

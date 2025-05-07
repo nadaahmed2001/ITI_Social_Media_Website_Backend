@@ -26,16 +26,24 @@ def notify_private_message(sender, instance, created, **kwargs):
 @receiver(post_save, sender=GroupMessage)
 def notify_group_message(sender, instance, created, **kwargs):
     if created:
-        group_members = instance.group.members.exclude(id=instance.sender.id)
+        group_members = instance.group.members.all()
+        group_supervisors = instance.group.supervisors.all()
+        
+        print("👥 Group Members:", [u.username for u in group_members])
+        print("👨‍🏫 Supervisors:", [u.username for u in group_supervisors])
+
+        recipients = (group_members | group_supervisors).distinct().exclude(id=instance.sender.id)
+        print("📩 Recipients:", [u.username for u in recipients])
+
         notifications = [
             Notification(
                 recipient=member,
                 sender=instance.sender,
                 notification_type="group_chat",
+                related_content_type=ContentType.objects.get_for_model(instance),
                 related_object_id=instance.id,
-                
             )
-            for member in group_members
+            for member in recipients
         ]
         Notification.objects.bulk_create(notifications)
 
@@ -83,34 +91,45 @@ def notify_post_author_on_comment(sender, instance, created, **kwargs):
         )
 
 def extract_mentions(text):
-    return set(re.findall(r'@([\w.-]+)', text))  
+    print("🧪 extract_mentions called with text:", text)
+    return set(re.findall(r'@([\w\.-]+)', text))
 
-# @receiver(post_save, sender=Post)
+@receiver(post_save, sender=Post)
 # @receiver(post_save, sender=Comment)
-# def notify_mentioned_users(sender, instance, created, **kwargs):
-#     if created:
-#         if isinstance(instance, Post):
-#             text = instance.body  
-#         elif isinstance(instance, Comment):
-#             text = instance.comment  
-#         else:
-#             return  
+def notify_mentioned_users(sender, instance, created, **kwargs):
+    try:
+        print("🚀 Signal triggered for:", instance)
+        if created:
+            if isinstance(instance, Post):
+                text = instance.body
+            # elif isinstance(instance, Comment):
+            #     text = instance.comment
+            else:
+                print("⚠️ Not Post or Comment instance")
+                return
 
-#         mentioned_usernames = extract_mentions(text) 
-#         mentioned_users = User.objects.filter(username__in=mentioned_usernames)
+            mentioned_usernames = extract_mentions(text)
+            print("📛 Mentioned usernames:", mentioned_usernames)
 
-#         notifications = [
-#             Notification(
-#                 recipient=user,
-#                 sender=instance.author,
-#                 notification_type="mention",
-#                 related_content_type=ContentType.objects.get_for_model(instance),
-#                 related_object_id=instance.id
-#             )
-#             for user in mentioned_users if user != instance.author
-#         ]
-#         Notification.objects.bulk_create(notifications)
+            mentioned_users = User.objects.filter(username__in=mentioned_usernames)
+            print("👤 Mentioned users found:", list(mentioned_users))
 
+            notifications = [
+                Notification(
+                    recipient=user,
+                    sender=instance.author,
+                    notification_type="mention", 
+                    related_content_type=ContentType.objects.get_for_model(instance),
+                    related_object_id=instance.id
+                )
+                for user in mentioned_users if user != instance.author
+            ]
+            Notification.objects.bulk_create(notifications)
+            print("✅ Notifications created:", notifications)
+    except Exception as e:
+        print("❌ Error in mention signal:", e)
+
+        
 @receiver(post_save, sender=Follow)
 def notify_follow(sender, instance, created, **kwargs):
     # If the Follow instance is newly created

@@ -15,9 +15,9 @@ class Notification(models.Model):
         ('message', 'Message'),
         ('chat', 'Chat'),
         ('group_chat', 'Group Chat'),
-        ('follow', 'Follow'),
         ('batch_assignment', 'Batch Assignment'),
         ('batch_end', 'Batch End'),
+        # ('mention', 'Mention'),
     ]
 
     REACTION_TYPES = [

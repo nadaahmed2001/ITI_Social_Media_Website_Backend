@@ -36,9 +36,17 @@ class NotificationSerializer(serializers.ModelSerializer):
                 "batch_end": Batch,
                 "reaction": Reaction,
                 "comment": Comment,
+                "mention": None, 
             }
-            model = model_map.get(obj.notification_type)
-            obj._cached_related_object = model.objects.filter(id=obj.related_object_id).first() if model else None
+            if obj.notification_type == "mention":
+                related_object = Post.objects.filter(id=obj.related_object_id).first()
+                if related_object:
+                    obj._cached_related_object = related_object
+                else:
+                    obj._cached_related_object = Comment.objects.filter(id=obj.related_object_id).first()
+            else:
+                model = model_map.get(obj.notification_type)
+                obj._cached_related_object = model.objects.filter(id=obj.related_object_id).first() if model else None
         return obj._cached_related_object
 
     def get_notification_text(self, obj):
@@ -78,6 +86,13 @@ class NotificationSerializer(serializers.ModelSerializer):
 
             return f"{sender_username} reacted"
 
+        elif obj.notification_type == "mention":
+            if isinstance(related_object, Post):
+                return f"You were mentioned in a post by {sender_username}"
+            # elif isinstance(related_object, Comment):
+            #     return f"You were mentioned in a comment by {sender_username}"
+
+
 
         elif obj.notification_type == "comment":
             comment_text = related_object.comment if related_object else "your post"
@@ -89,6 +104,13 @@ class NotificationSerializer(serializers.ModelSerializer):
     def get_notification_link(self, obj):
         related_object = self.get_related_object(obj)
         frontend_base_url = getattr(settings, "FRONTEND_BASE_URL", "http://localhost:5173")
+        
+        if obj.notification_type == "mention":
+            if isinstance(related_object, Post):
+                return f"{frontend_base_url}/dashboard/posts/{related_object.id}?scroll_to=mention-{obj.id}"
+            # elif isinstance(related_object, Comment):
+            #     return f"{frontend_base_url}/dashboard/posts/{related_object.post.id}?scroll_to=mention-{obj.id}"
+
 
         if obj.notification_type in ["follow", "unfollow"]:
             profile_uuid = getattr(getattr(obj.sender, "profile", None), "id", None)
