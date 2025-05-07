@@ -79,12 +79,46 @@ def notify_followers_on_new_post(sender, instance, created, **kwargs):
         Notification.objects.bulk_create(notifications)
 
 
+# @receiver(post_save, sender=Comment)
+# def notify_post_author_on_comment(sender, instance, created, **kwargs):
+#     if created and instance.post.author != instance.author: 
+#         Notification.objects.create(
+#             recipient=instance.post.author,
+#             sender=instance.author,
+#             notification_type="comment",
+#             related_content_type=ContentType.objects.get_for_model(instance),
+#             related_object_id=instance.id
+#         )
 @receiver(post_save, sender=Comment)
 def notify_post_author_on_comment(sender, instance, created, **kwargs):
-    if created and instance.post.author != instance.author: 
+    if not created:
+        return
+
+    author = instance.author
+    post_author = instance.post.author
+
+
+    mentioned_usernames = extract_mentions(instance.comment)
+    mentioned_users = User.objects.filter(username__in=mentioned_usernames)
+
+    
+    if mentioned_users.exists():
+        notifications = [
+            Notification(
+                recipient=user,
+                sender=author,
+                notification_type="mention",
+                related_content_type=ContentType.objects.get_for_model(instance),
+                related_object_id=instance.id
+            )
+            for user in mentioned_users if user != author
+        ]
+        Notification.objects.bulk_create(notifications)
+
+    elif post_author != author:
         Notification.objects.create(
-            recipient=instance.post.author,
-            sender=instance.author,
+            recipient=post_author,
+            sender=author,
             notification_type="comment",
             related_content_type=ContentType.objects.get_for_model(instance),
             related_object_id=instance.id

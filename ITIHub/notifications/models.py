@@ -17,7 +17,7 @@ class Notification(models.Model):
         ('group_chat', 'Group Chat'),
         ('batch_assignment', 'Batch Assignment'),
         ('batch_end', 'Batch End'),
-        # ('mention', 'Mention'),
+        ('mention', 'Mention'),
     ]
 
     REACTION_TYPES = [
@@ -41,6 +41,6 @@ class Notification(models.Model):
     related_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     related_object_id = models.PositiveIntegerField(null=True, blank=True)
     related_object = GenericForeignKey('related_content_type', 'related_object_id')
-
+    mentioned_in_comment = models.BooleanField(default=False)
     def __str__(self):
         return f"{self.recipient.username} - {self.get_notification_type_display()}"
