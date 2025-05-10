@@ -253,7 +253,7 @@ print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")  # Optional debug log
 CORS_ALLOW_CREDENTIALS = True
 
 # Explicitly disallow wildcard (*) origin when using credentials
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Allow these headers in CORS requests
 CORS_ALLOW_HEADERS = [
