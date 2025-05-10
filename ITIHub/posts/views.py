@@ -39,31 +39,45 @@ class PostListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = Post.objects.all() \
-            .select_related('author__profile') \
             .prefetch_related('attachments') \
             .order_by('-created_on')
 
-        owner_str = self.request.query_params.get('owner') # Get the string
+        owner_str = self.request.query_params.get('author_id') # Get the string
         if owner_str: # Check if the parameter was provided
-            try:
-                # Attempt to convert the string to a UUID object
-                owner_uuid = uuid.UUID(owner_str)
-                # Filter using the UUID object
-                queryset = queryset.filter(author_id=owner_uuid)
-            except ValueError:
-                # If the string is not a valid UUID format, raise a 400 Bad Request error
-                # instead of letting it crash with a 500.
-                raise ParseError("Invalid owner ID format. Must be a valid UUID.")
+            # print(f"Owner parameter provided: {owner_str}")
+            # print(f"Type of owner_str: {type(owner_str)}")
+            # try:
+            #     # Attempt to convert the string to a UUID object
+            #     owner_uuid = uuid.UUID(owner_str)
+            #     print(f"Converted owner_str to UUID: {owner_uuid}")
+            #     print(f"Type of owner_uuid: {type(owner_uuid)}")
+            
+            # Filter using the UUID object
+            queryset = queryset.filter(author_id=owner_str)
+            # except ValueError:
+            #     # If the string is not a valid UUID format, raise a 400 Bad Request error
+            #     # instead of letting it crash with a 500.
+            #     raise ParseError("Invalid owner ID format. Must be a valid UUID.")
         # else: If 'owner' parameter is NOT provided, what should happen?
         # The current code would return all posts (unfiltered) if you remove the filter line above.
         # If you always require an owner, you might add an 'else' here to raise a ParseError:
         # else:
         #     raise ParseError("Owner ID parameter is required for this endpoint.")
 
-        return queryset # Return the (potentially filtered) queryset
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+class UserPostListView(generics.ListAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        user_id = self.kwargs['user_id']
+        return Post.objects.filter(author_id=user_id).select_related('author__profile').prefetch_related('attachments', 'reaction_set').order_by('-created_on')
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
