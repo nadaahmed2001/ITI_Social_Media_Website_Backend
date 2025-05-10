@@ -109,69 +109,13 @@ TEMPLATES = [
 WSGI_APPLICATION = "ITIHub.wsgi.application"
 ASGI_APPLICATION = 'ITIHub.asgi.application'
 
-# # Database Configuration for Neon PostgreSQL
-# try:
-#     # tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-#     # print(f"Parsed database: host={tmpPostgres.hostname}, db={tmpPostgres.path.replace('/', '')}")
-    
-#     # DATABASES = {
-#     #     'default': {
-#     #         'ENGINE': 'django.db.backends.postgresql',
-#     #         'NAME': tmpPostgres.path.replace('/', ''),
-#     #         'USER': tmpPostgres.username,
-#     #         'PASSWORD': tmpPostgres.password,
-#     #         'HOST': tmpPostgres.hostname,
-#     #         'PORT': tmpPostgres.port or 5432,
-#     #         'OPTIONS': {
-#     #             'sslmode': 'require',
-#     #         }
-#     #     }
-#     # }
-    
-#     # Deploy DB on railway
-#     DATABASES = {
-#         'default': {
-
-#             'ENGINE': 'django.db.backends.postgresql',
-
-#             'NAME': 'railway',
-
-#             'USER': 'postgres',
-
-#             'PASSWORD': 'IbSRPkWhMwLMRDdVCRxieRrfrZxCnnwu',
-
-#             'HOST': 'postgres.railway.internal',
-
-#             'PORT': '5432',
-
-#         }
-
-#     }
-
-
-
-# except Exception as e:
-#     print(f"Error setting up database: {str(e)}")
-#     # Fallback to local database if DATABASE_URL parsing fails
-#     print("WARNING: Using local database configuration!")
-#     DATABASES = {
-#         'default': {
-#             'ENGINE': 'django.db.backends.postgresql',
-#             'NAME': os.environ.get('DB_NAME', 'itihub'),
-#             'USER': os.environ.get('DB_USER', 'itihubuser'),
-#             'PASSWORD': os.environ.get('DB_PASSWORD', 'password'),
-#             'HOST': os.environ.get('DB_HOST', 'localhost'),
-#             'PORT': os.environ.get('DB_PORT', '5432'),
-#         }
-#     }
-
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=False)
     }
 else:
     print("WARNING: DATABASE_URL not set. Falling back to local config.")
