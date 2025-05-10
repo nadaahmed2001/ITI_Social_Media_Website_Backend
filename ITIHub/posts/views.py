@@ -16,6 +16,8 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.exceptions import ParseError
+import uuid
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -33,21 +35,32 @@ class CommentPagination(PageNumberPagination):
 class PostListCreateView(generics.ListCreateAPIView):
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
-    pagination_class = StandardResultsSetPagination  # Add this line
-    
+    pagination_class = StandardResultsSetPagination
+
     def get_queryset(self):
-        # Ensure author__profile is selected
         queryset = Post.objects.all() \
             .select_related('author__profile') \
             .prefetch_related('attachments') \
             .order_by('-created_on')
-        # ... filtering ...
-        # return queryset
-        
-        if author_id := self.request.query_params.get('author'):
-            queryset = queryset.filter(author_id=author_id)
-        
-        return queryset
+
+        owner_str = self.request.query_params.get('owner') # Get the string
+        if owner_str: # Check if the parameter was provided
+            try:
+                # Attempt to convert the string to a UUID object
+                owner_uuid = uuid.UUID(owner_str)
+                # Filter using the UUID object
+                queryset = queryset.filter(author_id=owner_uuid)
+            except ValueError:
+                # If the string is not a valid UUID format, raise a 400 Bad Request error
+                # instead of letting it crash with a 500.
+                raise ParseError("Invalid owner ID format. Must be a valid UUID.")
+        # else: If 'owner' parameter is NOT provided, what should happen?
+        # The current code would return all posts (unfiltered) if you remove the filter line above.
+        # If you always require an owner, you might add an 'else' here to raise a ParseError:
+        # else:
+        #     raise ParseError("Owner ID parameter is required for this endpoint.")
+
+        return queryset # Return the (potentially filtered) queryset
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
