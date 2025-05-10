@@ -4,6 +4,7 @@ import os
 import sys
 from urllib.parse import urlparse
 from datetime import timedelta
+import dj_database_url
 
 # Load environment variables early
 load_dotenv()
@@ -24,14 +25,19 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-for-dev-o
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Use environment variables for allowed hosts
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,.up.railway.app,.neon.tech').split(',')
-# Add healthcheck.railway.app if not already present
-if 'healthcheck.railway.app' not in ALLOWED_HOSTS:
-    ALLOWED_HOSTS.append('healthcheck.railway.app')
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+# if "healthcheck.railway.app" not in ALLOWED_HOSTS:
+#     ALLOWED_HOSTS.append("healthcheck.railway.app")
 
-# Proxy configuration for Railway and other deployment platforms
-USE_X_FORWARDED_HOST = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://itisocialmediawebsitebackend-production.up.railway.app",
+    "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app",
+    "http://localhost:5173",
+]
+CSRF_COOKIE_SECURE = True  # Ensures CSRF cookie only sent over HTTPS
+SESSION_COOKIE_SECURE = True  # Ensures session cookie only sent over HTTPS
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
@@ -62,8 +68,7 @@ INSTALLED_APPS = [
     "posts",
     "notifications",
     "projects",
-    "core",  # Ensure core app is included here
-    "django_extensions",
+    'django_extensions',
     "rest_framework", 
     "chat",
     "rest_framework.authtoken",
@@ -104,32 +109,72 @@ TEMPLATES = [
 WSGI_APPLICATION = "ITIHub.wsgi.application"
 ASGI_APPLICATION = 'ITIHub.asgi.application'
 
-# Database Configuration for Neon PostgreSQL
-try:
-    tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
-    print(f"Parsed database: host={tmpPostgres.hostname}, db={tmpPostgres.path.replace('/', '')}")
+# # Database Configuration for Neon PostgreSQL
+# try:
+#     # tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+#     # print(f"Parsed database: host={tmpPostgres.hostname}, db={tmpPostgres.path.replace('/', '')}")
     
+#     # DATABASES = {
+#     #     'default': {
+#     #         'ENGINE': 'django.db.backends.postgresql',
+#     #         'NAME': tmpPostgres.path.replace('/', ''),
+#     #         'USER': tmpPostgres.username,
+#     #         'PASSWORD': tmpPostgres.password,
+#     #         'HOST': tmpPostgres.hostname,
+#     #         'PORT': tmpPostgres.port or 5432,
+#     #         'OPTIONS': {
+#     #             'sslmode': 'require',
+#     #         }
+#     #     }
+#     # }
+    
+#     # Deploy DB on railway
+#     DATABASES = {
+#         'default': {
+
+#             'ENGINE': 'django.db.backends.postgresql',
+
+#             'NAME': 'railway',
+
+#             'USER': 'postgres',
+
+#             'PASSWORD': 'IbSRPkWhMwLMRDdVCRxieRrfrZxCnnwu',
+
+#             'HOST': 'postgres.railway.internal',
+
+#             'PORT': '5432',
+
+#         }
+
+#     }
+
+
+
+# except Exception as e:
+#     print(f"Error setting up database: {str(e)}")
+#     # Fallback to local database if DATABASE_URL parsing fails
+#     print("WARNING: Using local database configuration!")
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': os.environ.get('DB_NAME', 'itihub'),
+#             'USER': os.environ.get('DB_USER', 'itihubuser'),
+#             'PASSWORD': os.environ.get('DB_PASSWORD', 'password'),
+#             'HOST': os.environ.get('DB_HOST', 'localhost'),
+#             'PORT': os.environ.get('DB_PORT', '5432'),
+#         }
+#     }
+
+
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if DATABASE_URL:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': tmpPostgres.path.replace('/', ''),
-            'USER': tmpPostgres.username,
-            'PASSWORD': tmpPostgres.password,
-            'HOST': tmpPostgres.hostname,
-            'PORT': tmpPostgres.port or 5432,
-            'CONN_MAX_AGE': 60,  # Connection lifetime in seconds
-            'OPTIONS': {
-                'sslmode': 'require',
-                'connect_timeout': 5,  # Timeout for establishing connections
-                'statement_timeout': 5000,  # Query timeout in milliseconds
-                'max_connections': 10,  # Max number of database connections
-            }
-        }
+        'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
     }
-except Exception as e:
-    print(f"Error setting up database: {str(e)}")
-    # Fallback to local database if DATABASE_URL parsing fails
-    print("WARNING: Using local database configuration!")
+else:
+    print("WARNING: DATABASE_URL not set. Falling back to local config.")
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -141,57 +186,23 @@ except Exception as e:
         }
     }
 
-# Redis configuration for channels - More robust settings
+
+
+# Redis configuration for channels
 redis_url = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379")
 print(f"Using REDIS_URL: {redis_url[:10]}...")  # Debug info
-try:
-    # Parse the URL to ensure it's valid
-    import urllib.parse
-    parsed_redis = urllib.parse.urlparse(redis_url)
-    redis_host = parsed_redis.hostname or "localhost"
-    redis_port = parsed_redis.port or 6379
-    print(f"Redis connection details: {redis_host}:{redis_port}")
-    # In-memory fallback settings for local development
-    if (redis_host == "localhost"):
-        print("Using in-memory channel layer for local development")
-        CHANNEL_LAYERS = {
-            "default": {
-                "BACKEND": "channels.layers.InMemoryChannelLayer",
-            }
-        }
-    else:
-        # Configure Redis channel layers for production
-        CHANNEL_LAYERS = {
-            "default": {
-                "BACKEND": "channels_redis.core.RedisChannelLayer",
-                "CONFIG": {
-                    "hosts": [redis_url],
-                    "capacity": 500,
-                    "expiry": 5,
-                    "connect_timeout": 1,
-                    "socket_timeout": 1,
-                    "socket_keepalive": True,
-                    "retry_on_timeout": True,
-                    "ping_interval": 30,
-                    "ping_timeout": 10,
-                },
-            },
-        }
-except Exception as e:
-    print(f"Error configuring Redis: {e}, using in-memory channel layer instead")
-    # Fallback to in-memory channel layer
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
-    }
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [redis_url],
+        },
+    },
+}
 
 # Static files configuration
 STATIC_URL = "static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-# Configure whitenoise for static files in production
-if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Cloudinary configuration from environment variables
 CLOUDINARY_STORAGE = {
@@ -204,12 +215,9 @@ CLOUDINARY_STORAGE = {
     'RESOURCE_TYPE': os.environ.get('CLOUDINARY_RESOURCE_TYPE', 'auto'),  # 'image', 'video', 'raw', 'auto'
     'OVERWRITE': os.environ.get('CLOUDINARY_OVERWRITE', 'False').lower() == 'true',  # Prevent overwriting files with same name
 }
+
 # Tell Django to use Cloudinary for media file storage
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
-# Optionally, for static files in production:
-if not DEBUG:
-    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticHashedCloudinaryStorage'
-    STATIC_ROOT = BASE_DIR / 'staticfiles_collected'  # For collectstatic
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -229,22 +237,44 @@ LOGO_URL = os.environ.get('LOGO_URL', "https://eib.eg/wp-content/uploads/2018/09
 
 # OpenAI API configuration
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY") 
+import os
 
-# Ensure CORS settings allow frontend to communicate with backend
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,https://iti-social-media-website-frontend.vercel.app,https://healthcheck.railway.app').split(',')
+# --------------------
+# CORS Configuration
+# --------------------
+
+# Load allowed origins from environment
+CORS_ALLOWED_ORIGINS = [
+    origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
+]
+print(f"CORS_ALLOWED_ORIGINS: {CORS_ALLOWED_ORIGINS}")  # Optional debug log
+
+# MUST be True if you're using cookies or Authorization headers from frontend
 CORS_ALLOW_CREDENTIALS = True
+
+# Explicitly disallow wildcard (*) origin when using credentials
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Allow these headers in CORS requests
 CORS_ALLOW_HEADERS = [
-    'content-type',
+    'accept',
     'authorization',
+    'content-type',
+    'origin',
     'x-csrftoken',
     'x-requested-with',
-    'accept',
-    'withcredentials',
-    'origin',  # Add origin header which is important for CORS
-    'access-control-allow-origin'  # Allow this header to be processed
 ]
-# In production, this should be False and specific origins should be set
-CORS_ALLOW_ALL_ORIGINS = True
+
+# Optional: if you're using DELETE/PUT, etc.
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 
 # Add to ensure JWT works properly in production
 REST_FRAMEWORK = {
@@ -260,37 +290,36 @@ REST_FRAMEWORK = {
     # 'EXCEPTION_HANDLER': 'ITIHub.utils.custom_exception_handler',
 }
 
-# JWT settings - ensure these are properly configured
+# JWT Settings
+from datetime import timedelta
+import os
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # Set to 24 hours for better debugging
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Set to 30 days for better debugging
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  # Increase from default 5 mins
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': False,
+
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', SECRET_KEY),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
-    'AUTH_HEADER_TYPES': ('Bearer',),  # Add this to ensure Bearer prefix is accepted
-    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',  # Standardize the header name accepted
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
+
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
+
     'JTI_CLAIM': 'jti',
 }
-# Make JWT_SECRET_KEY available separately for middleware to use
+
+# Make JWT_SECRET_KEY available as a separate setting for middleware to use
 JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
-
-# WebSocket specific settings
-WS_PROTOCOL = os.environ.get('WS_PROTOCOL', 'wss' if not DEBUG else 'ws')
-WS_HOST = os.environ.get('WS_HOST', 'itisocialmediawebsitebackend-production.up.railway.app')
-WS_PING_INTERVAL = int(os.environ.get('WS_PING_INTERVAL', 30))
-WS_PING_TIMEOUT = int(os.environ.get('WS_PING_TIMEOUT', 10))
-
-# Ensure WebSocket settings are available 
-ENABLE_WEBSOCKET = os.environ.get('ENABLE_WEBSOCKET', 'true').lower() == 'true'
 
 # Site ID
 SITE_ID = 1
@@ -303,39 +332,3 @@ default_app_config = 'ITIHub.apps.ITIHubConfig'
 
 # Add this at the end of the file or with other Django settings
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',  # This will show more details in the logs
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
-
-DEBUG = True
-
-DB_QUERY_TIMEOUT_MS = 3000  # 3 seconds in milliseconds
-# Add these timeout settings to improve request handling
-ASGI_REQUEST_TIMEOUT = 15  # seconds - Maximum time for ASGI requests before timeout
-HTTP_REQUEST_TIMEOUT = 10  # seconds - Maximum time for HTTP requests

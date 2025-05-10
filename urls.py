@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import HttpResponse, JsonResponse
+
 import logging
 
 # Configure logging
@@ -39,25 +40,35 @@ def safe_include(urlconf_module):
         # Return a simple pattern that shows an error message
         return path('', lambda r: JsonResponse({"error": f"Module {urlconf_module} is not available"}, status=501))
 
+# Debug auth check endpoint
+def debug_auth(request):
+    """Simple endpoint to verify user authentication status"""
+    return HttpResponse(
+        f"Authenticated: {request.user.is_authenticated}, "
+        f"User: {request.user.username if request.user.is_authenticated else 'Anonymous'}"
+    )
+
+# Main URL patterns
 urlpatterns = [
+    # Admin interface
     path("admin/", admin.site.urls),
+    
+    # API endpoints grouped by module
     path("api/users/", include("users.urls")),
-    path("api/supervisor/", include("batches.urls")),
+    path("api/batches/", include("batches.urls")),
     path("api/posts/", include("posts.urls")),
     path("api/notifications/", include("notifications.urls")),
     path("api/projects/", include("projects.urls")),
     path("api/chat/", include("chat.urls")),
+    path("api/", include("core.urls")),
+    
+    # Health check and monitoring endpoints
     path("health/", health_check, name="health_check"),
-    path("api/health-check/", health_check, name="api_health_check"),
+    
+    # Debugging endpoints
+    path("api/debug/auth/", debug_auth, name="debug_auth"),
 ]
 
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
-# Add a debug URL to check auth
-urlpatterns += [
-    path("api/debug/auth/", 
-         lambda request: HttpResponse(f"Authenticated: {request.user.is_authenticated}, User: {request.user.username if request.user.is_authenticated else 'Anonymous'}"), 
-         name="debug_auth"),
-]

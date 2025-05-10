@@ -3,23 +3,28 @@ ASGI config for ITIHub project.
 """
 
 import os
+import django
 from django.core.asgi import get_asgi_application
+
+# Set the Django settings module
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ITIHub.settings")
+
+# Initialize Django
+django.setup()
+
+# Import after Django is fully initialized
 from channels.routing import ProtocolTypeRouter, URLRouter
-from ITIHub.chat.middleware import TokenAuthMiddlewareStack
-from chat.routing import websocket_urlpatterns
-from .asgi_timeout import with_timeout
+from channels.security.websocket import AllowedHostsOriginValidator
+from chat.middleware import TokenAuthMiddlewareStack
+import chat.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ITIHub.settings')
-
-# Initialize Django ASGI application
-django_asgi_app = get_asgi_application()
-
-# Apply timeout middleware to the entire application
-application = with_timeout(
-    ProtocolTypeRouter({
-        "http": django_asgi_app,
-        "websocket": TokenAuthMiddlewareStack(
-            URLRouter(websocket_urlpatterns)
-        ),
-    })
-)
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": AllowedHostsOriginValidator(
+        TokenAuthMiddlewareStack(
+            URLRouter(
+                chat.routing.websocket_urlpatterns
+            )
+        )
+    ),
+})

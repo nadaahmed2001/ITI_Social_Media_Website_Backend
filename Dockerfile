@@ -25,8 +25,7 @@ RUN mkdir -p /app/ITIHub
 
 
 # Create health check endpoint
-RUN mkdir -p /app/ITIHub/ITIHub/
-RUN echo 'from django.http import JsonResponse\n\ndef health_check(request):\n    return JsonResponse({"status": "healthy"})' > /app/ITIHub/ITIHub/health_check.py
+RUN echo 'from django.http import JsonResponse\n\ndef health_check(request):\n    return JsonResponse({"status": "healthy"})' > /app/ITIHub/health_check.py
 
 # Expose the port
 EXPOSE 8000
