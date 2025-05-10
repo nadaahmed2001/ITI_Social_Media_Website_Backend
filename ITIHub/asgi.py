@@ -5,7 +5,7 @@ ASGI config for ITIHub project.
 import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-from chat.middleware import TokenAuthMiddlewareStack
+from ITIHub.chat.middleware import TokenAuthMiddlewareStack
 from chat.routing import websocket_urlpatterns
 from .asgi_timeout import with_timeout
 
