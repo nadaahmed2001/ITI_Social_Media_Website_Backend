@@ -36,7 +36,10 @@ print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
 CSRF_TRUSTED_ORIGINS = [
     "https://itisocialmediawebsitebackend-production.up.railway.app",
     "https://iti-social-media-websi-git-2fec63-nada-ahmeds-projects-9fb624b0.vercel.app",
+    "http://itihub-backend-ncohav-026f24-129-159-8-224.traefik.me/",
+    "http://itihub-frontend-5ecxc3-370830-129-159-8-224.traefik.me/",
     "http://localhost:5173",
+    'http://129.159.8.224',
 ]
 CSRF_COOKIE_SECURE = True  # Ensures CSRF cookie only sent over HTTPS
 SESSION_COOKIE_SECURE = True  # Ensures session cookie only sent over HTTPS
