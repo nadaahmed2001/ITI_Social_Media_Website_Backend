@@ -41,8 +41,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     'http://129.159.8.224',
 ]
-CSRF_COOKIE_SECURE = True  # Ensures CSRF cookie only sent over HTTPS
-SESSION_COOKIE_SECURE = True  # Ensures session cookie only sent over HTTPS
+CSRF_COOKIE_SECURE = False  # Ensures CSRF cookie only sent over HTTPS
+SESSION_COOKIE_SECURE = False  # Ensures session cookie only sent over HTTPS
 
 # User model configuration
 AUTH_USER_MODEL = "users.User"
