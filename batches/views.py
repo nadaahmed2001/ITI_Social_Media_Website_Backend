@@ -73,6 +73,20 @@ class TrackViewSet(viewsets.ModelViewSet):
         return Track.objects.filter(program__in=programs)
 
 
+# Endpoint to get all tracks by program
+class AllTracksByProgramView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        program_id = request.query_params.get("program_id")
+
+        if not program_id:
+            return Response({"error": "Program ID is required"}, status=400)
+
+        tracks = Track.objects.filter(program_id=program_id)
+        serializer = TrackSerializer(tracks, many=True)
+        return Response(serializer.data)
+
 
 
 @method_decorator(csrf_exempt, name="dispatch")
