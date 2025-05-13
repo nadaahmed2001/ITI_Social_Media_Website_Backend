@@ -777,30 +777,46 @@ class AllProfilesAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """
-        Get all profiles and their associated skills.
-        """
-        profiles = Profile.objects.all()  # Retrieve all profiles
+        profiles = Profile.objects.select_related('user').all()
         all_profiles_data = []
 
-        # Loop through each profile and serialize the data
         for profile in profiles:
-            # Serialize the individual profile with the updated serializer
             profile_data = ProfileSerializer(profile).data
+            user = profile.user
 
-            # Fetching skills for each profile
-            main_skills = profile.skill_set.exclude(description__exact="")  # Main skills with description
-            other_skills = profile.skill_set.filter(description="")  # Skills without description
+            # === Add this block ===
+            if user.is_student:
+                try:
+                    student = Student.objects.get(user=user)
+                    student_batches = StudentBatch.objects.filter(
+                        student=student
+                    ).select_related("batch__program", "batch__track")
+                    
+                    iti_history = []
+                    for sb in student_batches:
+                        batch = sb.batch
+                        iti_history.append({
+                            "program_name": batch.program.name,
+                            "track_name": batch.track.name if batch.track else None,
+                            "status": "Graduated" if not batch.active else "Studying",
+                        })
+                    profile_data["iti_history"] = iti_history
+                except Student.DoesNotExist:
+                    profile_data["iti_history"] = []
+            else:
+                profile_data["iti_history"] = []
+            # === End added block ===
 
-            # Add skills to the profile data
+            # Existing skills processing
+            main_skills = profile.skill_set.exclude(description__exact="")
+            other_skills = profile.skill_set.filter(description="")
+            
             profile_data["main_skills"] = SkillSerializer(main_skills, many=True).data
             profile_data["other_skills"] = SkillSerializer(other_skills, many=True).data
 
-            # Add the profile data to the list
             all_profiles_data.append(profile_data)
 
         return Response(all_profiles_data, status=status.HTTP_200_OK)
-
 
 class UserProfileAPI(APIView):
     def get(self, request, id):

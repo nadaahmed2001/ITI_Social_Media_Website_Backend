@@ -266,19 +266,10 @@ def remove_reaction_notification(sender, instance, **kwargs):
 
 
 
-from django.db import transaction, connection
-
 @receiver(pre_delete, sender=User)
 def cleanup_user_notifications(sender, instance, **kwargs):
-    print(f"⚡ Signal triggered for user {instance.id}")  # Check console/logs
-    # Disable foreign key checks
-    with connection.cursor() as cursor:
-        cursor.execute('SET CONSTRAINTS ALL DEFERRED')
-    
-    # Clean up notifications
+    # Delete all notifications where this user is the recipient
     Notification.objects.filter(recipient=instance).delete()
-    Notification.objects.filter(sender=instance).update(sender=None)
     
-    # Re-enable constraints
-    with connection.cursor() as cursor:
-        cursor.execute('SET CONSTRAINTS ALL IMMEDIATE')
+    # Update all notifications where this user is the sender
+    Notification.objects.filter(sender=instance).update(sender=None)
