@@ -152,13 +152,16 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         # Send the message to WebSocket clients
         await self.send(text_data=json.dumps({
-            "message": event["message"],
+        "type": "chat_message", # Explicitly add the type here
+        "message": {            # Wrap message details under 'message' key
+            "id": event.get("message_id"), # Use 'message_id' from broadcast event
+            "content": event["message"],  # 'message' from broadcast event is the content
             "timestamp": event["timestamp"],
             "sender": event["sender"],
             "sender_id": event.get("sender_id"),
-            "message_id": event.get("message_id")
-        }))
-
+        }
+    }))
+        
     async def user_joined(self, event):
         # Notify clients of a new user joining
         await self.send(text_data=json.dumps({
@@ -381,12 +384,15 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         # Ensure the message is broadcast to all clients in the private chat
         await self.send(text_data=json.dumps({
-            'message': event['message'],
+        "type": "chat_message", # Explicitly add the type here
+        "message": {            # Wrap message details under 'message' key
+            'id': event.get('id'), # Use 'id' from broadcast event
+            'content': event['message'], # 'message' from broadcast event is the content
             'sender': event['sender'],
             'sender_id': event.get('sender_id'),
             'timestamp': event['timestamp'],
-            'id': event.get('id')
-        }))
+        }
+    }))
 
     async def edit_message(self, event):
         # Notify clients of the edited message
