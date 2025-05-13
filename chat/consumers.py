@@ -387,15 +387,15 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
     # Ensure the message is broadcast to all clients in the private chat
     # Ensure the payload matches the frontend's expected structure
         await self.send(text_data=json.dumps({
-            "type": "chat_message", # Explicitly add the type here
-            "message": {            # Wrap message details under 'message' key
-                'id': event.get('id'), # Use 'id' from broadcast event
-                'content': event['message'], # 'message' from broadcast event is the content
+            "type": "chat_message",
+            "message": {
+                'id': event.get('id'),
+                'message': event['message'], # <-- Changed key to 'message' for private chat content
                 'sender': event['sender'],
                 'sender_id': event.get('sender_id'),
                 'timestamp': event['timestamp'],
-                # Note: Receiver is implicit in private chat group,
-                # frontend normalization handles this based on isGroupChat
+                # Add receiver ID if your frontend expects it and can use it
+                'receiver': str(self.other_user_id), # Or appropriate representation
             }
         }))
 
