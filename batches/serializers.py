@@ -4,12 +4,15 @@ from .models import Department, Program, Track, Batch, StudentBatch
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields = "__all__"
+        fields = ['id', 'name']  # Only include fields you need
 
 class ProgramSerializer(serializers.ModelSerializer):
+    department = DepartmentSerializer(read_only=True)
+
     class Meta:
         model = Program
-        fields = "__all__"
+        fields = ['id', 'name', 'description', 'department']
+
 
 class TrackSerializer(serializers.ModelSerializer):
     class Meta:
