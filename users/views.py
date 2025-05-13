@@ -798,6 +798,7 @@ class AllProfilesAPI(APIView):
                         iti_history.append({
                             "program_id": batch.program.id,
                             "program_name": batch.program.name,
+                            "track_id": batch.track.id if batch.track else None,
                             "track_name": batch.track.name if batch.track else None,
                             "status": "Graduated" if not batch.active else "Studying",
                         })
@@ -853,6 +854,7 @@ class UserProfileAPI(APIView):
                 iti_history.append({
                     "program_id": batch.program.id,
                     "program": batch.program.name,
+                    "track_id": batch.track.id if batch.track else None,
                     "track": batch.track.name if batch.track else None,
                     "start_date": batch.created_at.strftime('%Y-%m-%d'),
                     "status": "Graduated" if not batch.active else "Studying",
