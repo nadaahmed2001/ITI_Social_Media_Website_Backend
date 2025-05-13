@@ -116,8 +116,21 @@ class Follow(models.Model):
     class Meta:
         unique_together = ('follower', 'following')  # Prevents duplicate follows
 
+    # def __str__(self):
+    #     return f"{self.follower.username} follows {self.following.username}"
     def __str__(self):
-        return f"{self.follower.username} follows {self.following.username}"
+        try:
+            follower_name = self.follower.username
+        except User.DoesNotExist:
+            follower_name = "Deleted User"
+
+        try:
+            following_name = self.following.username
+        except User.DoesNotExist:
+            following_name = "Deleted User"
+
+        return f"{follower_name} follows {following_name}"
+
 
 
 # Table to store the email change requests
