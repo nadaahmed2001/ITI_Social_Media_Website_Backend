@@ -74,6 +74,7 @@ class TrackViewSet(viewsets.ModelViewSet):
 
 
 # Endpoint to get all tracks by program
+@method_decorator(csrf_exempt, name="dispatch")
 class AllTracksByProgramView(APIView):
     permission_classes = [IsAuthenticated]
 
