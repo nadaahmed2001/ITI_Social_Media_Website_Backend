@@ -229,26 +229,29 @@ def notify_reaction(sender, instance, created, **kwargs):
             )
 
 
+
 @receiver(post_delete, sender=Reaction)
 def remove_reaction_notification(sender, instance, **kwargs):
     try:
-        # Attempt to get related user and post
-        user = getattr(instance, 'user', None)
-        post = getattr(instance, 'post', None)
+        # Determine the related object (post or comment)
+        related_object = instance.post or instance.comment
+        if related_object is None:
+            return  # No related object to associate with
 
-        # Ensure both related objects exist before proceeding
-        if user is None or post is None:
-            return
+        # Get the ContentType for the related object
+        content_type = ContentType.objects.get_for_model(related_object)
 
         # Delete the corresponding notification
         Notification.objects.filter(
-            type='reaction',
-            sender=user,
-            post=post
+            recipient=related_object.author,
+            sender=instance.user,
+            notification_type='reaction',
+            related_content_type=content_type,
+            related_object_id=related_object.id
         ).delete()
     except Exception as e:
-        # Optional: log the error instead of raising
         print(f"Error in remove_reaction_notification: {e}")
+
 
 # @receiver(post_delete, sender=Reaction)
 # def remove_reaction_notification(sender, instance, **kwargs):
