@@ -23,6 +23,8 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
 
+
+# Endpoint to get all programs in the department of the logged-in supervisor
 @method_decorator(csrf_exempt, name="dispatch")
 class ProgramViewSet(viewsets.ModelViewSet):
     serializer_class = ProgramSerializer
@@ -37,7 +39,15 @@ class ProgramViewSet(viewsets.ModelViewSet):
         
         return Program.objects.filter(department=department)
     
-    
+
+# Endpoint to get all programs in all departments
+@method_decorator(csrf_exempt, name="dispatch")
+class AllProgramsViewSet(viewsets.ReadOnlyModelViewSet):  # Read-only for safety
+    queryset = Program.objects.all()
+    serializer_class = ProgramSerializer
+    permission_classes = [IsAuthenticated]  # You can customize this for admins only if needed
+
+
 class TrackViewSet(viewsets.ModelViewSet):
     serializer_class = TrackSerializer
     permission_classes = [IsAuthenticated]
@@ -61,6 +71,8 @@ class TrackViewSet(viewsets.ModelViewSet):
         
         # If no program_id, return all tracks related to programs in the department
         return Track.objects.filter(program__in=programs)
+
+
 
 
 @method_decorator(csrf_exempt, name="dispatch")
