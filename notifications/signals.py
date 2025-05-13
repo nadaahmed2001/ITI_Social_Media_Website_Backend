@@ -7,6 +7,8 @@ from posts.models import Post, Comment, Reaction
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 import re
+from django.db.models.signals import pre_delete
+
 
 User = get_user_model()
 
@@ -91,6 +93,7 @@ def notify_followers_on_new_post(sender, instance, created, **kwargs):
 #             related_content_type=ContentType.objects.get_for_model(instance),
 #             related_object_id=instance.id
 #         )
+
 @receiver(post_save, sender=Comment)
 def notify_post_author_on_comment(sender, instance, created, **kwargs):
     if not created:
@@ -260,3 +263,13 @@ def remove_reaction_notification(sender, instance, **kwargs):
 #     related_object_id=instance.id,
 #     related_content_type=ContentType.objects.get_for_model(instance)
 #     ).delete()
+
+
+
+@receiver(pre_delete, sender=User)
+def cleanup_user_notifications(sender, instance, **kwargs):
+    # Delete all notifications where this user is the recipient
+    Notification.objects.filter(recipient=instance).delete()
+    
+    # Update all notifications where this user is the sender
+    Notification.objects.filter(sender=instance).update(sender=None)
