@@ -150,17 +150,19 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
             }))
 
     async def chat_message(self, event):
-        # Send the message to WebSocket clients
+    # Send the message to WebSocket clients
+    # Ensure the payload matches the frontend's expected structure
         await self.send(text_data=json.dumps({
-        "type": "chat_message", # Explicitly add the type here
-        "message": {            # Wrap message details under 'message' key
-            "id": event.get("message_id"), # Use 'message_id' from broadcast event
-            "content": event["message"],  # 'message' from broadcast event is the content
-            "timestamp": event["timestamp"],
-            "sender": event["sender"],
-            "sender_id": event.get("sender_id"),
-        }
-    }))
+            "type": "chat_message", # Explicitly add the type here
+            "message": {            # Wrap message details under 'message' key
+                "id": event.get("message_id"), # Use 'message_id' from broadcast event
+                "content": event["message"],  # 'message' from broadcast event is the content
+                "timestamp": event["timestamp"],
+                "sender": event["sender"],
+                "sender_id": event.get("sender_id"),
+            }
+        }))
+
         
     async def user_joined(self, event):
         # Notify clients of a new user joining
@@ -382,17 +384,20 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
             }))
 
     async def chat_message(self, event):
-        # Ensure the message is broadcast to all clients in the private chat
+    # Ensure the message is broadcast to all clients in the private chat
+    # Ensure the payload matches the frontend's expected structure
         await self.send(text_data=json.dumps({
-        "type": "chat_message", # Explicitly add the type here
-        "message": {            # Wrap message details under 'message' key
-            'id': event.get('id'), # Use 'id' from broadcast event
-            'content': event['message'], # 'message' from broadcast event is the content
-            'sender': event['sender'],
-            'sender_id': event.get('sender_id'),
-            'timestamp': event['timestamp'],
-        }
-    }))
+            "type": "chat_message", # Explicitly add the type here
+            "message": {            # Wrap message details under 'message' key
+                'id': event.get('id'), # Use 'id' from broadcast event
+                'content': event['message'], # 'message' from broadcast event is the content
+                'sender': event['sender'],
+                'sender_id': event.get('sender_id'),
+                'timestamp': event['timestamp'],
+                # Note: Receiver is implicit in private chat group,
+                # frontend normalization handles this based on isGroupChat
+            }
+        }))
 
     async def edit_message(self, event):
         # Notify clients of the edited message
