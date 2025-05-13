@@ -7,7 +7,7 @@ router = DefaultRouter()
 router.register(r'programs', ProgramViewSet, basename="program")
 router.register(r'all-programs', AllProgramsViewSet, basename="all-programs")
 router.register(r'tracks', TrackViewSet, basename="track") #Displays track of the department of the logged-in supervisor only
-router.register(r'all-tracks', AllTracksByProgramView.as_view(), name='all-tracks-by-program')
+# router.register(r'all-tracks', AllTracksByProgramView.as_view(), name='all-tracks-by-program')
 router.register(r'batches', BatchViewSet, basename="batch")
 router.register(r'student-batches', StudentBatchViewSet, basename="student-batch")
 router.register(r'departments', DepartmentViewSet, basename="department")
@@ -16,4 +16,5 @@ router.register(r'departments', DepartmentViewSet, basename="department")
 urlpatterns = [
     path('', include(router.urls)),
     path('upload-national-id/', UploadNationalIDView.as_view(), name='upload-national-id'),
+    path('all-tracks/', AllTracksByProgramView.as_view(), name='all-tracks-by-program'),
 ]
