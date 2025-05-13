@@ -10,6 +10,8 @@ import re
 
 User = get_user_model()
 
+
+
 @receiver(post_save, sender=ChatMessage)
 def notify_private_message(sender, instance, created, **kwargs):
     if created and instance.receiver:
@@ -177,16 +179,32 @@ def notify_follow(sender, instance, created, **kwargs):
             related_object_id=instance.id
         )
 
+
+
 @receiver(post_delete, sender=Follow)
 def notify_unfollow(sender, instance, **kwargs):
-    # Send an 'unfollow' notification when the follow relationship is deleted
-    Notification.objects.create(
-        recipient=instance.following,
-        sender=instance.follower,
-        notification_type="unfollow",
-        related_content_type=ContentType.objects.get_for_model(instance),
-        related_object_id=instance.id
-    )
+    if instance.following_id and instance.follower_id:
+        try:
+            Notification.objects.create(
+                recipient=User.objects.get(id=instance.following_id),
+                sender=User.objects.get(id=instance.follower_id),
+                notification_type="unfollow",
+                related_content_type=ContentType.objects.get_for_model(instance),
+                related_object_id=instance.id
+            )
+        except User.DoesNotExist:
+            pass  # One of the users was deleted
+
+# @receiver(post_delete, sender=Follow)
+# def notify_unfollow(sender, instance, **kwargs):
+#     # Send an 'unfollow' notification when the follow relationship is deleted
+#     Notification.objects.create(
+#         recipient=instance.following,
+#         sender=instance.follower,
+#         notification_type="unfollow",
+#         related_content_type=ContentType.objects.get_for_model(instance),
+#         related_object_id=instance.id
+#     )
 
 @receiver(post_save, sender=Reaction)
 def notify_reaction(sender, instance, created, **kwargs):

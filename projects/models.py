@@ -5,7 +5,7 @@ import uuid
 import pprint
 from django.conf import settings
 
-# Create your models here.
+# Projects app:
 class Project(models.Model):
     id = models.UUIDField(default=uuid.uuid4, unique=True, primary_key=True, editable=False)
     owner = models.ForeignKey(Profile, on_delete=models.SET_NULL, null=True, blank=True)

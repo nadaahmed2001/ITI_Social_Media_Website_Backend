@@ -3,7 +3,7 @@ from django.utils import timezone
 from users.models import User
 from django.core.validators import MaxLengthValidator, MinLengthValidator
 
-# models.py
+# Posts app:
 class Attachment(models.Model):
     image = models.URLField(null=True, blank=True)  # Changed from ImageField to URLField
     video = models.URLField(null=True, blank=True)  # Changed from FileField to URLField

@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 
 User = get_user_model()
 
+# Notifications app:
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('reaction', 'Reaction'),
