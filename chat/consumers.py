@@ -12,6 +12,8 @@ from django.db.models import Q
 from channels.db import database_sync_to_async
 from django.db import close_old_connections
 import traceback
+from django.utils import timezone
+
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                         "type": "user_joined",
                         "username": self.user.username,
                         "user_id": self.user.id,
-                        "timestamp": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                        "timestamp": str(timezone.now().strftime("%Y-%m-%d %H:%M:%S")),
                     }
                 )
             except Exception as e:
@@ -104,7 +106,7 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
                         "sender": self.user.username,
                         "sender_id": self.user.id,
                         "message_id": msg_id,
-                        "timestamp": str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                        "timestamp": str(timezone.now().strftime("%Y-%m-%d %H:%M:%S")),
                     }
                 )
             elif action == 'edit':
@@ -337,7 +339,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                         'message': message,
                         'sender': self.user.username,
                         'sender_id': self.user.id,
-                        'timestamp': str(datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                        'timestamp': str(timezone.now().strftime("%Y-%m-%d %H:%M:%S")),
                         'id': msg_id  # Add ID so frontend can track the message
                     }
                 )
